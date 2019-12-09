@@ -1,0 +1,175 @@
+<robot name="spheres">
+  <link name="obj_a">
+    <contact>
+      <lateral_friction value="1.0"/>
+      <rolling_friction value="0.0"/>
+      <inertia_scaling value="3.0"/>
+      <contact_cfm value="1.0"/>
+      <contact_erp value="1.0"/>
+    </contact>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0.2 0"/>
+      <mass value="0.0495"/>
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="0"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0.2 0"/>
+      <geometry>
+        <mesh filename="sphere.obj" scale="0.1 0.1 0.1"/>
+      </geometry>
+      <material name="blockmat">
+        <color rgba="0.39 0.62 0.05 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0.2 0"/>
+      <geometry>
+        <mesh filename="sphere_coll.obj" scale="0.1 0.1 0.1"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="joint_sphere_a_b" type="revolute">
+    <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+    <parent link="obj_a"/>
+    <child link="obj_b"/>
+    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <dynamics damping="0.7" friction="0.0"/>
+  </joint>
+  <link name="obj_b">
+    <contact>
+      <lateral_friction value="1.0"/>
+      <rolling_friction value="0.0"/>
+      <inertia_scaling value="3.0"/>
+      <contact_cfm value="1.0"/>
+      <contact_erp value="1.0"/>
+    </contact>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 -0.2 0"/>
+      <mass value="0.0495"/>
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="0"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 -0.2 0"/>
+      <geometry>
+        <mesh filename="sphere.obj" scale="0.1 0.1 0.1"/>
+      </geometry>
+      <material name="blockmat">
+        <color rgba="0.39 0.62 0.05 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 -0.2 0"/>
+      <geometry>
+        <mesh filename="sphere_coll.obj" scale="0.1 0.1 0.1"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="joint_sphere_b_c" type="revolute">
+    <origin rpy="0 0 0" xyz="0.0 -0.2 0.0"/>
+    <parent link="obj_b"/>
+    <child link="obj_c"/>
+    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <dynamics damping="0.7" friction="0.0"/>
+  </joint>
+  <link name="obj_c">
+    <contact>
+      <lateral_friction value="1.0"/>
+      <rolling_friction value="0.0"/>
+      <inertia_scaling value="3.0"/>
+      <contact_cfm value="1.0"/>
+      <contact_erp value="1.0"/>
+    </contact>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 -0.4 0"/>
+      <mass value="0.0495"/>
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="0"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 -0.4 0"/>
+      <geometry>
+        <mesh filename="sphere.obj" scale="0.1 0.1 0.1"/>
+      </geometry>
+      <material name="blockmat">
+        <color rgba="0.39 0.2 0.5 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 -0.4 0"/>
+      <geometry>
+        <mesh filename="sphere_coll.obj" scale="0.1 0.1 0.1"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="joint_sphere_c_d" type="revolute">
+    <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
+    <parent link="obj_c"/>
+    <child link="obj_d"/>
+    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <dynamics damping="0.7" friction="0.0"/>
+  </joint>
+  <link name="obj_d">
+    <contact>
+      <lateral_friction value="1.0"/>
+      <rolling_friction value="0.0"/>
+      <inertia_scaling value="3.0"/>
+      <contact_cfm value="1.0"/>
+      <contact_erp value="1.0"/>
+    </contact>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 -0.4 0"/>
+      <mass value="0.0495"/>
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="0"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 -0.4 0"/>
+      <geometry>
+        <mesh filename="sphere.obj" scale="0.1 0.1 0.1"/>
+      </geometry>
+      <material name="blockmat">
+        <color rgba="0.39 0.2 0.5 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 -0.4 0"/>
+      <geometry>
+        <mesh filename="sphere_coll.obj" scale="0.1 0.1 0.1"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="joint_sphere_d_e" type="revolute">
+    <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
+    <parent link="obj_d"/>
+    <child link="obj_e"/>
+    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <dynamics damping="0.7" friction="0.0"/>
+  </joint>
+  <link name="obj_e">
+    <contact>
+      <lateral_friction value="1.0"/>
+      <rolling_friction value="0.0"/>
+      <inertia_scaling value="3.0"/>
+      <contact_cfm value="1.0"/>
+      <contact_erp value="1.0"/>
+    </contact>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 -0.4 0"/>
+      <mass value="0.0495"/>
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="0"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 -0.4 0"/>
+      <geometry>
+        <mesh filename="sphere.obj" scale="0.1 0.1 0.1"/>
+      </geometry>
+      <material name="blockmat">
+        <color rgba="0.39 0.2 0.5 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 -0.4 0"/>
+      <geometry>
+        <mesh filename="sphere_coll.obj" scale="0.1 0.1 0.1"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>
