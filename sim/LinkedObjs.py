@@ -3,6 +3,8 @@
 # Walk through - https://towardsdatascience.com/simulate-images-for-ml-in-pybullet-the-quick-easy-way-859035b2c9dd
 #
 # A quick run through setting up a simulation with random objects and producing images from some camera array.
+# NOTE: it might be good to consider using urdf/obj files as input so that obj modifications don't need 
+#       to occur in the code, but rather in the model description. Maybe it's not so useful afterall.
 
 
 
@@ -43,58 +45,83 @@ class ModelFormats:
     Urdf = "urdf"
 
 class RopeObj:
-    def __init__(self):
+    def __init__(self, size):
         self.m_sphereUid = -1
+        self.m_massSpringModel = None 
         return 
+
+    class PointMass:
+        def __init__(self, massId):
+            self.m_id = massId
+            self.m_mass = 0 
+            self.m_inertia = 0 
+            self.m_position = [0,0,0]
+
+        def SetPhysicalProperties(mass, inertia):
+            self.m_mass = mass
+            self.m_inertia = inertia
+
+        # todo: accessors
+        def SetPosition(pos):
+            self.m_position = pos
+
+        def Str():
+            return "id: {}\nmass: {}\nintertia: {}\npos: {}\nlink_id: {}\n".format(
+                self.m_id, self.m_mass, self.m_inertial, self.m_position, self.m_linkId)
+
+    class Spring:
+        # NOTE: each spring is associated with a point mass
+        # 
+        def __init__(self, parentMassId):
+            self.m_massId = parentMassId
+            self.m_kSpring = 100000 
+            self.m_kBend = 100000
+            self.m_length = 0 
+            self.m_orientation = [0,0,0] 
+
+        def SetPhysicalProperties(springConstant, bendConstant, restPosition=0):
+            self.m_kSpring = springConstant
+            self.m_kBend = bendConstant
+            self.m_length = restPosition
+
+        def SetOrientation(orientationVec):
+            self.m_orientation = orientationVec
+
+        def VectorAngle(vector):
+            a = vector
+            b = self.m_orientation
+            # Should we worry about the sign? in which case maybe sine+cross is better?
+            return math.acos(np.dot(a, b) / np.linalg.norm(a) / np.linalg.norm(b))
+
+        def Str():
+            return "id: {}\nmid: {}\nmass: {}\nspringK: {}\nbendK: {}\nlength: {}\norientation: {}\n".format(
+                self.m_id, self.m_massId, self.m_kSpring, self.m_kBend, self.m_length, self.m_orientation)
+
+#        def ComputeBeta(otherLinkOrientation):
 
     def Move(self, heading):
         # Use Wang_Bleuler physics model to compute new position for each point mass
 
 
-        # # our steering value
-        # self.m_segmentLength = self.m_sphereRadius * 2.0
-
-        # sphereUid = self.m_sphereUid
-        # amp = 0.2
-        # offset = 0.6
-        # numJoints = p.getNumJoints(sphereUid)
-        # scaleStart = 1.0
-
-        # # start of the snake with smaller waves.
-        # # I think starting the wave at the tail would work better ( while it still goes from head to tail )
-        # if (self.m_waveFront < self.m_segmentLength * 4.0):
-        #     scaleStart = self.m_waveFront / (self.m_segmentLength * 4.0)
-
-        # # we simply move a sin wave down the body of the snake.
-        # # this snake may be going backwards, but who can tell ;)
-        # for joint in range(numJoints):
-        #     segment = joint  # numMuscles-1-joint
-        #     # map segment to phase
-        #     phase = (self.m_waveFront - (segment + 1) * self.m_segmentLength) / self.m_waveLength
-        #     phase -= math.floor(phase)
-        #     phase *= math.pi * 2.0
-
-        #     # map phase to curvature
-        #     targetPos = math.sin(phase) * scaleStart * self.m_waveAmplitude
-
-        #     # // steer snake by squashing +ve or -ve side of sin curve
-        #     if (heading > 0 and targetPos < 0):
-        #         targetPos *= 1.0 / (1.0 + heading)
-
-        #     if (heading < 0 and targetPos > 0):
-        #         targetPos *= 1.0 / (1.0 - heading)
-
-        #     # set our motor
-        #     p.setJointMotorControl2(sphereUid,
-        #                             joint,
-        #                             p.POSITION_CONTROL,
-        #                             targetPosition=targetPos + heading,
-        #                             force=30)
-
-        # # wave keeps track of where the wave is in time
-        # self.m_waveFront += self.m_dt / self.m_wavePeriod * self.m_waveLength
+        # get mouse position to use as grasp point?
+        # find the link id that was selected (is closes to it?)
+        # set corresponding node position to new link id position
+        # update all other nodes and links
+        # update all joints corresponding to nodes
         return
 
+    def CreateRopeModel(self, numJoints):
+
+        self.m_massSpringModel = np.empty(numJoints)
+        for i in np.arange(numJoints):
+            pm = PointMass(i)
+            lk = Spring(i)
+            pm.SetPhysicalProperties(2, 0.0495)  # Should read from file
+            self.m_massSpringModel[i] = (pm, lk)  
+
+        return
+
+    # What if there's no collision model?
     def SetObjectParameters(self, modelGeometryFile, modelCollisionFile="", texturePath=""):
         print("Loading urdf")
         if (not os.path.exists(modelGeometryFile) and not os.path.exists(modelCollisionFile)):
@@ -115,7 +142,7 @@ class RopeObj:
                 meshScale = meshScale)
 
             # Specify collision model
-            if modelCollisionFile == "":
+            if modelCollisionFile == "" and False:
                 colId = p.createCollisionShape(
                     shapeType = p.GEOM_SPHERE,
                     radius = 0.2,
@@ -144,13 +171,15 @@ class RopeObj:
         if (texturePath != ""):
             p.changeVisualShape(multiBodyId, -1, textureUniqueId = p.loadTexture(texturePath))
 
-        anistropicFriction = [1, 0.01, 0.01]
-        p.changeDynamics(multiBodyId, -1, lateralFriction=2, anisotropicFriction=anistropicFriction)
-        for i in range(p.getNumJoints(multiBodyId)):
-            p.getJointInfo(multiBodyId, i)
-            p.changeDynamics(multiBodyId, i, lateralFriction=2, anisotropicFriction=anistropicFriction)
+        # anistropicFriction = [1, 0.01, 0.01]
+        # p.changeDynamics(multiBodyId, -1, lateralFriction=2, anisotropicFriction=anistropicFriction)
+        # for i in range(p.getNumJoints(multiBodyId)):
+        #     p.getJointInfo(multiBodyId, i)
+        #     p.changeDynamics(multiBodyId, i, lateralFriction=2, anisotropicFriction=anistropicFriction)
 
         print("generated model:\n{}\n{}\n{}".format(str(visId), str(colId), str(multiBodyId)))
+
+        CreateRopeModel(p.getNumJoints(sphereUid))
 
         # update member components
         self.m_sphereUid = multiBodyId
@@ -220,7 +249,7 @@ class SnakeObj:
 
         anistropicFriction = [1, 0.01, 0.01]
         p.changeDynamics(self.m_sphereUid, -1, lateralFriction=2, anisotropicFriction=anistropicFriction)
-        for i in range(p.getNumJoints(self.m_sphereUid)):
+        for i in np.arange(p.getNumJoints(self.m_sphereUid)):
             p.getJointInfo(self.m_sphereUid, i)
             p.changeDynamics(self.m_sphereUid, i, lateralFriction=2, anisotropicFriction=anistropicFriction)
 
@@ -248,7 +277,7 @@ class SnakeObj:
 
         # we simply move a sin wave down the body of the snake.
         # this snake may be going backwards, but who can tell ;)
-        for joint in range(numJoints):
+        for joint in np.arange(numJoints):
             segment = joint  # numMuscles-1-joint
             # map segment to phase
             phase = (self.m_waveFront - (segment + 1) * self.m_segmentLength) / self.m_waveLength
@@ -320,7 +349,7 @@ p.setGravity(0,0,-9.81)
 # N = 135 // A
 # cams = [None] * N 
 # print("Creating {} cams".format(N))
-# for i in range(N):
+# for i in np.arange(N):
 #   x = R * cos(i * A * np.pi / 180) 
 #   y = R * sin(i * A * np.pi / 180) 
 #   z = 0
@@ -351,7 +380,7 @@ targetObj.SetObjectParameters(sleepDuration, 2, 2, 1, 0)
 
 toggleFreq = SIM_DURATION / 500 
 heading = 0.4 
-for i in range(SIM_DURATION):
+for i in np.arange(SIM_DURATION):
     p.stepSimulation()
     # periodically flip heading sign
     heading *= -2 * (i % toggleFreq == 0) + 1
