@@ -1,5 +1,9 @@
 #!/usr/bin/python3
 
+"""
+This example was taken from https://www.geeksforgeeks.org/q-learning-in-python/.
+"""
+
 import gym 
 import itertools 
 import matplotlib 

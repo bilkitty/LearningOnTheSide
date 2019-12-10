@@ -1,5 +1,7 @@
+#!/usr/bin/python3
+
 import gym
 
-env = gym.make("Taxi-v2").env
+env = gym.make("Taxi-v3").env
 
 env.render()
