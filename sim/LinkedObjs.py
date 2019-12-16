@@ -24,6 +24,8 @@ IMG_WIDTH = 300
 IMG_HEIGHT = 300
 MODEL_INITIAL_POS = [0,0,1]
 
+ENABLE_MODEL = False 
+
 class ModelFormats: 
     Obj = "obj"
     Urdf = "urdf"
@@ -91,88 +93,46 @@ class Spring:
         #return 0.0
 
 class RopeObj:
-    DEFAULT_MASS = 0.0495
+    DEFAULT_MASS = 0.1
     DEFAULT_INERTIA = np.identity(3)
     DEFAULT_INERTIA[2,2] = 0
-    DEFAULT_KSPRING = 1
-    DEFAULT_KBEND = 1
+    DEFAULT_KSPRING = 10 
+    DEFAULT_KBEND = 10
     USE_MAXIMAL_COORDINATES = True
     MASS_IDX = 0
     SPR_IDX = 1
+    INVALID_UID = -1
 
-    def __init__(self, modelGeometryFile, sphereRadius):
-
-        visualShapeId = -1
-        if (modelGeometryFile.endswith(ModelFormats.Obj)):
-            # Compute size of mesh to determine collision shape size and link distance
-            # Specify visual model
-            meshScale = [0.1, 0.1, 0.1]
-            visualShapeId = p.createVisualShape(
-                shapeType = p.GEOM_MESH,
-                fileName = modelGeometryFile,
-                rgbaColor = None,
-                meshScale = meshScale)
-        else:
-            print("Geometry file '{}' should be existing .obj".format(modelGeometryFile))
-
-
-        # colBoxId = p.createCollisionShapeArray([p.GEOM_BOX, p.GEOM_SPHERE],radii=[sphereRadius+0.03,sphereRadius+0.03], halfExtents=[[sphereRadius,sphereRadius,sphereRadius],[sphereRadius,sphereRadius,sphereRadius]])
-        colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=[sphereRadius, sphereRadius, sphereRadius])
-
-        linkMasses = []
-        linkCollisionShapeIndices = []
-        linkVisualShapeIndices = []
-        linkPositions = []
-        linkOrientations = []
-        linkInertialFramePositions = []
-        linkInertialFrameOrientations = []
-        indices = []
-        jointTypes = []
-        axis = []
-
-        ropeLength = 36
-        for i in range(ropeLength):
-            linkMasses.append(1)
-            linkCollisionShapeIndices.append(colBoxId)
-            linkVisualShapeIndices.append(visualShapeId)
-            linkPositions.append([0, sphereRadius * 2.0 + 0.01, 0])
-            #linkOrientations.append([0, 0, 0, 1])
-            linkOrientations.append([0, 0, np.pi])
-            linkInertialFramePositions.append([0, 0, 0])
-            linkInertialFrameOrientations.append([0, 0, 0, 1])
-            indices.append(i)
-            jointTypes.append(p.JOINT_REVOLUTE)
-            axis.append([0, 0, 1])
-
-        basePosition = [0, 0, 1]
-        baseOrientation = [0, 0, 0, 1]
-
+    def __init__(self, geometryFile, sphereRadius=0.2):
+        #
         # Geometric model
-        self.m_sphereRadius = sphereRadius
-        self.m_sphereUid = p.createMultiBody(self.DEFAULT_MASS,
-                                      colBoxId,
-                                      visualShapeId,
-                                      basePosition,
-                                      baseOrientation,
-                                      linkMasses=np.array(linkMasses, dtype=float),
-                                      linkCollisionShapeIndices=np.array(linkCollisionShapeIndices, dtype=int),
-                                      linkVisualShapeIndices=np.array(linkVisualShapeIndices, dtype=int),
-                                      linkPositions=linkPositions,
-                                      linkOrientations=linkOrientations,
-                                      linkInertialFramePositions=linkInertialFramePositions,
-                                      linkInertialFrameOrientations=linkInertialFrameOrientations,
-                                      linkParentIndices=np.array(indices, dtype=int),
-                                      linkJointTypes=jointTypes,
-                                      linkJointAxis=axis,
-                                      useMaximalCoordinates=self.USE_MAXIMAL_COORDINATES)
+        #
 
-        anistropicFriction = [1, 0.01, 0.01]
-        p.changeDynamics(self.m_sphereUid, -1, lateralFriction=2, anisotropicFriction=anistropicFriction)
-        for i in np.arange(p.getNumJoints(self.m_sphereUid)):
-            p.getJointInfo(self.m_sphereUid, i)
-            p.changeDynamics(self.m_sphereUid, i, lateralFriction=2, anisotropicFriction=anistropicFriction)
+        #self.m_sphereUid, linkPositions = RopeObj.CreateGeometry(geometryFile, sphereRadius)
+        #self.m_sphereUid, linkPositions = RopeObj.CreateGeometry2(geometryFile, sphereRadius)
+        self.m_sphereUid, linkPositions = RopeObj.LoadGeometryFromUrdf(geometryFile)
+        assert(linkPositions.shape[0] > 0), "Failed to create rope geometry"
 
+        # Override physical properties
+        # Using large values is highly unstable
+        for l in np.arange(linkPositions.shape[0]):
+            p.changeDynamics(self.m_sphereUid,
+                             l,
+                             RopeObj.DEFAULT_MASS,
+                             lateralFriction=0.2,
+                             spinningFriction=0.2, 
+                             rollingFriction=0.2,
+                             restitution=100,   # (bouncyness)
+                             linearDamping=0.1,
+                             angularDamping=0.01,
+                             contactStiffness=1,
+                             contactDamping=1, 
+                             anisotropicFriction=[1, 0.01, 0.01]) 
+
+        #
         # Physical model
+        #
+        ropeLength = linkPositions.shape[0]
         self.m_massSpringModel = np.empty((2, ropeLength), dtype=object) 
         for i in np.arange(ropeLength):
             pm = PointMass(i)
@@ -189,24 +149,15 @@ class RopeObj:
             self.m_massSpringModel[self.SPR_IDX][i] = lk
         self.m_massSpringModel[self.SPR_IDX][ropeLength - 1] = None # will this come back to bite me? could just duplicate the last spring... hmmm 
 
-        print("all set:\n{}\n{}\n{}".format(
-            self.m_massSpringModel.size, self.m_massSpringModel[self.MASS_IDX][0].Str(), self.m_massSpringModel[self.SPR_IDX][0].Str()))
+        #length = self.Size()
+        length = p.getNumJoints(self.m_sphereUid)
+        print("geometry:\n{}\n{}\nphysical:\n{}\n{}".format(
+            self.m_sphereUid, length, self.m_massSpringModel[self.MASS_IDX][0].Str(), self.m_massSpringModel[self.SPR_IDX][0].Str()))
 
-        # NOTE: some api functions that involve inspecting the multibody don't work with
-        #       programatically generated bodies. So, prioritize loading models from urdf,
-        #       or otherwise. Besides, it's probably better to store model descriptions in
-        #       files rather than creating them on the fly...
-        #       example failing apis: 
-        #       getLinkStates, calcultateInverseKinematics
-        self.LoadGeometryFromUrdf("/home/bilkit/Workspace/pybullet/scripts/sim/spheres.urdf")
         return 
 
-    # NOTE: getLinkState(s) api requires a multi body that's loaded from urdf. It seems like iterable thing is given
-    #       a type in loadURDF api. How should one create a multi body that is identical, in format, to the one loaded
-    #       from urdf?
+    # NOTE: Using Wang,Bleuler 2005 physics model to compute new position for each point mass
     def Move(self, movedLinkId, newPosition, dt):
-        # Use Wang_Bleuler physics model to compute new position for each point mass
-
         nJoints = p.getNumJoints(self.m_sphereUid)
         positions = np.array([np.zeros(4)] * nJoints)
 
@@ -242,14 +193,15 @@ class RopeObj:
         xdd = fs / masses[i].m_mass
         xd = xd + xdd * dt
         x = x + xd * dt
+        print("numJoints: {}\tid: {}\tpos: {}".format(p.getNumJoints(self.m_sphereUid), i, x))
 
-        positions[i] = p.calculateInverseKinematics(self.m_sphereUid, i, x)
+        positions = p.calculateInverseKinematics(self.m_sphereUid, i, x)
         print("new joint pos:\n{}\n{}".format(x, positions[i]))
         for n in np.arange(nJoints):
             p.setJointMotorControl2(self.m_sphereUid,
                                     n,
                                     p.POSITION_CONTROL,
-                                    targetPosition=positions[i][n],
+                                    targetPosition=positions[i],
                                     force=30)
 
         # update model - masses first then springs
@@ -271,16 +223,180 @@ class RopeObj:
         return
 
     def Size(self):
-        return self.m_massSpringModel.size
+        return self.m_massSpringModel.shape[1]
 
     def ObjUid(self):
         return self.m_sphereUid
 
-    def LoadGeometryFromUrdf(self, modelUrdfFile, modelCollisionFile="", texturePath=""):
-        print("Loading urdf")
-        if (not os.path.exists(modelUrdfFile) and not os.path.exists(modelCollisionFile)):
-            print("Failed to find model paths '{}' '{}'".format(modelUrdfFile, modelCollisionFile))
-            return 
+    @staticmethod
+    def CreateGeometry(modelGeometryFile, sphereRadius):
+        visualShapeId = -1
+        if (os.path.exists(modelGeometryFile) and modelGeometryFile.endswith(ModelFormats.Obj)):
+            # Compute size of mesh to determine collision shape size and link distance
+            # Specify visual model
+            meshScale = [0.1, 0.1, 0.1]
+            visualShapeId = p.createVisualShape(
+                shapeType = p.GEOM_MESH,
+                fileName = modelGeometryFile,
+                rgbaColor = None,
+                meshScale = meshScale)
+        else:
+            print("Geometry file '{}' should be existing .obj".format(modelGeometryFile))
+            # continue with default visualization
+
+
+        # colBoxId = p.createCollisionShapeArray([p.GEOM_BOX, p.GEOM_SPHERE],radii=[sphereRadius+0.03,sphereRadius+0.03], halfExtents=[[sphereRadius,sphereRadius,sphereRadius],[sphereRadius,sphereRadius,sphereRadius]])
+        colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=[sphereRadius, sphereRadius, sphereRadius])
+
+        linkMasses = []
+        linkCollisionShapeIndices = []
+        linkVisualShapeIndices = []
+        linkPositions = []
+        linkOrientations = []
+        linkInertialFramePositions = []
+        linkInertialFrameOrientations = []
+        indices = []
+        jointTypes = []
+        axis = []
+
+        ropeLength = 36
+        for i in range(ropeLength):
+            linkMasses.append(1)
+            linkCollisionShapeIndices.append(colBoxId)
+            linkVisualShapeIndices.append(visualShapeId)
+            linkPositions.append([0, sphereRadius * 2.0 + 0.01, 0])
+            #linkOrientations.append([0, 0, 0, 1])
+            linkOrientations.append([0, 0, np.pi])
+            linkInertialFramePositions.append([0, 0, 0])
+            linkInertialFrameOrientations.append([0, 0, 0, 1])
+            indices.append(i)
+            jointTypes.append(p.JOINT_REVOLUTE)
+            axis.append([0, 0, 1])
+
+        basePosition = [0, 0, 1]
+        baseOrientation = [0, 0, 0, 1]
+
+        # Geometric model
+        multiBodyId = p.createMultiBody(RopeObj.DEFAULT_MASS,
+                                      colBoxId,
+                                      visualShapeId,
+                                      basePosition,
+                                      baseOrientation,
+                                      linkMasses=np.array(linkMasses, dtype=float),
+                                      linkCollisionShapeIndices=np.array(linkCollisionShapeIndices, dtype=int),
+                                      linkVisualShapeIndices=np.array(linkVisualShapeIndices, dtype=int),
+                                      linkPositions=linkPositions,
+                                      linkOrientations=linkOrientations,
+                                      linkInertialFramePositions=linkInertialFramePositions,
+                                      linkInertialFrameOrientations=linkInertialFrameOrientations,
+                                      linkParentIndices=np.array(indices, dtype=int),
+                                      linkJointTypes=jointTypes,
+                                      linkJointAxis=axis,
+                                      useMaximalCoordinates=RopeObj.USE_MAXIMAL_COORDINATES)
+
+        anistropicFriction = [1, 0.01, 0.01]
+        p.changeDynamics(multiBodyId, -1, lateralFriction=2, anisotropicFriction=anistropicFriction)
+        for i in np.arange(p.getNumJoints(multiBodyId)):
+            p.getJointInfo(multiBodyId, i)
+            p.changeDynamics(multiBodyId, i, lateralFriction=2, anisotropicFriction=anistropicFriction)
+
+        return multiBodyId, np.array(linkPositions)
+
+    @staticmethod
+    def CreateGeometry2(modelGeometryFile, sphereRadius):
+        massVisualShapeId = -1
+        springVisualShapeId = -1
+        if (os.path.exists(modelGeometryFile) and modelGeometryFile.endswith(ModelFormats.Obj)):
+            # Compute size of mesh to determine collision shape size and link distance
+            # Specify visual model
+            meshScale = [0.1, 0.1, 0.1]
+            massVisualShapeId = p.createVisualShape(
+                shapeType = p.GEOM_MESH,
+                fileName = modelGeometryFile,
+                rgbaColor = None,
+                meshScale = meshScale)
+            meshScale = [0.03, 0.03, 0.03]
+            springVisualShapeId = p.createVisualShape(
+                shapeType = p.GEOM_MESH,
+                fileName = modelGeometryFile,
+                rgbaColor = None,
+                meshScale = meshScale)
+        else:
+            print("Geometry file '{}' should be existing .obj".format(modelGeometryFile))
+            # continue with default visualization
+
+        colSphereId = p.createCollisionShape(p.GEOM_SPHERE, radius=sphereRadius)
+        colBoxId = p.createCollisionShape(p.GEOM_BOX,
+                                          halfExtents=[sphereRadius/3, sphereRadius/3, sphereRadius/3])
+
+        lps = []
+        linkMasses = [1]
+        linkCollisionShapeIndices = [colBoxId]
+        linkVisualShapeIndices = [-1]
+        linkPositions = [[0, 0, 0.11]]
+        linkOrientations = [[0, 0, 0, 1]]
+        linkInertialFramePositions = [[0, 0, 0]]
+        linkInertialFrameOrientations = [[0, 0, 0, 1]]
+        indices = [0]
+        jointTypes = [p.JOINT_REVOLUTE]
+        axis = [[0, 0, 1]]
+
+        massMultiBodyIds = []
+        springMultiBodyIds = []
+        for i in range(3):
+          for j in range(3):
+            for k in range(3):
+              basePosition = [
+                  1 + i * 5 * sphereRadius, 1 + j * 5 * sphereRadius, 1 + k * 5 * sphereRadius + 1
+              ]
+              baseOrientation = [0, 0, 0, 1]
+              if (k & 2):
+                # Masses
+                massMultiBodyIds.append(p.createMultiBody(RopeObj.DEFAULT_MASS, colSphereId, massVisualShapeId, basePosition,
+                                              baseOrientation))
+              else:
+                # Springs
+                springMultiBodyIds.append(p.createMultiBody(RopeObj.DEFAULT_MASS,
+                                              colBoxId,
+                                              springVisualShapeId,
+                                              basePosition,
+                                              baseOrientation,
+                                              linkMasses=linkMasses,
+                                              linkCollisionShapeIndices=linkCollisionShapeIndices,
+                                              linkVisualShapeIndices=linkVisualShapeIndices,
+                                              linkPositions=linkPositions,
+                                              linkOrientations=linkOrientations,
+                                              linkInertialFramePositions=linkInertialFramePositions,
+                                              linkInertialFrameOrientations=linkInertialFrameOrientations,
+                                              linkParentIndices=indices,
+                                              linkJointTypes=jointTypes,
+                                              linkJointAxis=axis))
+              lps.append(basePosition)
+
+              # p.changeDynamics(multiBodyId,
+              #                  -1,
+              #                  spinningFriction=0.001,
+              #                  rollingFriction=0.001,
+              #                  linearDamping=0.0)
+
+        print("test: {}".format(massMultiBodyIds[0]))
+        print("      {}".format(springMultiBodyIds[0]))
+        RopeObj.LinkState(massMultiBodyIds[0])
+        RopeObj.LinkState(springMultiBodyIds[0])
+        return massMultiBodyIds, springMultiBodyIds, np.array(lps)
+
+    # NOTE: some api functions that involve inspecting the multibody don't work with
+    #       programatically generated bodies. So, prioritize loading models from urdf,
+    #       or otherwise. Besides, it's probably better to store model descriptions in
+    #       files rather than creating them on the fly...
+    #       example failing apis: 
+    #       getLinkStates, calcultateInverseKinematics
+    @staticmethod
+    def LoadGeometryFromUrdf(modelUrdfFile, texturePath=""):
+        print("Loading urdf '{}'".format(modelUrdfFile))
+        if (not os.path.exists(modelUrdfFile)):
+            print("Failed to find model paths '{}'".format(modelUrdfFile))
+            return RopeObj.INVALID_UID, np.array([])
 
         multiBodyId = ""
         if (modelUrdfFile.endswith(ModelFormats.Urdf)): 
@@ -288,14 +404,18 @@ class RopeObj:
             print("(INFO) Loaded new model '{}'".format(multiBodyId))
         else:
             print("Unknown model format '{}'".format(modelUrdfFile))
+            return RopeObj.INVALID_UID, np.array([])
 
         # Override textures
         if (texturePath != ""):
             p.changeVisualShape(multiBodyId, -1, textureUniqueId = p.loadTexture(texturePath))
 
-        # update member components
-        self.m_sphereUid = multiBodyId
-        return
+        linkPositions = RopeObj.LinkStates(multiBodyId, p.getNumJoints(multiBodyId))[0]
+        if (not linkPositions.any()):
+            print("Failed to get link states.")
+            return RopeObj.INVALID_UID, np.array([])
+
+        return multiBodyId, np.array(linkPositions)
 
     @staticmethod
     def JointStates(uid):
@@ -333,19 +453,19 @@ class RopeObj:
             print("================ ")
             print("Failed joint state queries: {}".format(failedQueries))
 
-        return pos, vels, forces, torques
+        return np.array(pos), np.array(vels), np.array(forces), np.array(torques)
 
     @staticmethod
-    def LinkStates(uid):
+    def LinkStates(uid, numLinks):
         failedQueries = 0
         pos, orientations, inertialPos, inertialOrientations = [], [], [], []
-        for i in np.arange(10): #self.Size()):
-            linkStates = p.getLinkState(uid, i)
+        for i in np.arange(numLinks):
+            linkState = p.getLinkState(uid, i)
             print("================ ")
-            if (linkStates == None):
+            if (linkState == None):
                 failedQueries += 1
             else:
-                posWorld, orientationWorld, inertialPosLocal, inertialOrientationLocal = linkStates[:4]  
+                posWorld, orientationWorld, inertialPosLocal, inertialOrientationLocal = linkState[:4]  
                 pos.append(posWorld)
                 orientations.append(orientationWorld)
                 inertialPos.append(inertialPosLocal)
@@ -361,7 +481,25 @@ class RopeObj:
             print("================ ")
             print("Failed link state queries: {}".format(failedQueries))
 
-        return pos, orientations, inertialPos, inertialOrientations
+        return np.array(pos), np.array(orientations), np.array(inertialPos), np.array(inertialOrientations)
+
+    @staticmethod
+    def LinkState(uid):
+        linkState = p.getLinkState(uid, 0)
+        print("================ ")
+        if (linkState == None):
+            print("Failed link state query")
+            return None, None, None, None
+        else:
+            posWorld, orientationWorld, inertialPosLocal, inertialOrientationLocal = linkState[:4]
+
+            print("query link info:\n{}\n{}\n{}\n{}\n{}".format(
+                uid,
+                posWorld, 
+                orientationWorld, 
+                inertialPosLocal, 
+                inertialOrientationLocal))
+            return posWorld, orientationWorld, inertialPosLocal, inertialOrientationLocal
 
 class SnakeObj:
 
@@ -407,6 +545,10 @@ class SnakeObj:
         basePosition = [0, 0, 1]
         baseOrientation = [0, 0, 0, 1]
 
+        self.m_waveLength = 0 
+        self.m_wavePeriod = 0 
+        self.m_waveAmplitude = 0 
+        self.m_waveFront = 0 
         self.m_sphereRadius = sphereRadius
         self.m_sphereUid = p.createMultiBody(mass,
                                       colBoxId,
@@ -431,14 +573,13 @@ class SnakeObj:
             p.getJointInfo(self.m_sphereUid, i)
             p.changeDynamics(self.m_sphereUid, i, lateralFriction=2, anisotropicFriction=anistropicFriction)
 
-    def SetObjectParameters(self, dt, length, period, amplitude, wavefront):
-        self.m_dt = dt
+    def SetObjectParameters(self, length, period, amplitude, wavefront):
         self.m_waveLength = length
         self.m_wavePeriod = period
         self.m_waveAmplitude = amplitude
         self.m_waveFront = wavefront
 
-    def Move(self, heading):
+    def Move(self, heading, dt):
         # our steering value
         self.m_segmentLength = self.m_sphereRadius * 2.0
 
@@ -480,35 +621,7 @@ class SnakeObj:
                                     force=30)
 
         # wave keeps track of where the wave is in time
-        self.m_waveFront += self.m_dt / self.m_wavePeriod * self.m_waveLength
-
-def PlaceCamera(position, target):
-    print("new cam pos: {}".format(position))
-    viewMatrix = p.computeViewMatrix(
-        cameraEyePosition=position,
-        cameraTargetPosition=target,
-        cameraUpVector=[0, 1, 0])
-
-    projectionMatrix = p.computeProjectionMatrixFOV(
-        fov=45.0,
-        aspect=1.0,
-        nearVal=0.1,
-        farVal=3.1)
-
-    return viewMatrix, projectionMatrix
-
-def GetImageFromCamera(viewMatrix, projMatrix):
-    width, height, rgbaImg, depthImg, segImg = p.getCameraImage(
-        width=IMG_WIDTH, 
-        height=IMG_HEIGHT,
-        viewMatrix=viewMatrix,
-        projectionMatrix=projMatrix)
-    return np.array(rgbaImg).reshape(height, width, 4)
-
-def MoveCamera(deltaPos, deltaTarg):
-
-    return viewMatrix
-
+        self.m_waveFront += dt / self.m_wavePeriod * self.m_waveLength
 
 SIM_DURATION = 10000
 print("Connecting to gui")
@@ -524,28 +637,6 @@ p.setGravity(0,0,-9.81)
 #
 ##
 
-# # Setup cameras
-# A = 30    # angular resolution in degrees 
-# R = 2     # radial distance in meters
-# N = 135 // A
-# cams = [None] * N 
-# print("Creating {} cams".format(N))
-# for i in np.arange(N):
-#   x = R * cos(i * A * np.pi / 180) 
-#   y = R * sin(i * A * np.pi / 180) 
-#   z = 0
-
-#   view, proj = PlaceCamera([x, y, z], MODEL_INITIAL_POS)
-#   cams[i] = [view, proj]
-
-# # Record images
-# cid = 0
-# for c in cams:
-#   rgbaImg = GetImageFromCamera(c[0], c[1])
-#   rgbImg = rgbaImg[:,:,:3]
-#   cv.imwrite("{}_rgb.png".format(cid), rgbImg)
-#   cid += 1
-
 # Better to use loop for batches of objs
 # NOTE: will get "XIO:  fatal IO error 11" when closing window before timeout
 shouldExit = False
@@ -555,7 +646,9 @@ if (len(sys.argv) == 1):
     print("Please provide model obj/urdf file")
     sys.exit()
 
-targetObj = RopeObj(sys.argv[1], sphereRadius)
+urdffile = "/home/bilkit/Workspace/pybullet/models/random_urdfs/spheres/spheres.urdf"
+objfile = "/home/bilkit/Workspace/pybullet/models/random_urdfs/spheres/sphere.obj"
+targetObj = RopeObj(objfile, sphereRadius) if sys.argv[1] == '0' else RopeObj(urdffile)
 #targetObj = SnakeObj(sphereRadius)
 #targetObj.SetObjectParameters(sleepDuration, 2, 2, 1, 0)
 
@@ -563,19 +656,22 @@ toggleFreq = SIM_DURATION / 500
 heading = 0.4 
 for i in np.arange(SIM_DURATION):
     p.stepSimulation()
-    # periodically flip heading sign
-    heading *= -2 * (i % toggleFreq == 0) + 1
 
-    # if mouse pointer intersects body
-    # find link closest to mouse pos
-    mousePos = [0.5, 0, 1]
-    refMousePointId = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=0, basePosition=mousePos)
-    pts = p.getClosestPoints(bodyA=targetObj.ObjUid(), bodyB=refMousePointId, distance=1)
+    if ENABLE_MODEL:
+        # periodically flip heading sign
+        heading *= -2 * (i % toggleFreq == 0) + 1
 
-    # binary search for closest link
+        # if mouse pointer intersects body
+        # find link closest to mouse pos
+        mousePos = [0.5, 0, 1]
+        refMousePointId = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=0, basePosition=mousePos)
+        pts = p.getClosestPoints(bodyA=targetObj.ObjUid(), bodyB=refMousePointId, distance=1)
 
-    selectedLink = 2
-    #targetObj.Move(selectedLink, mousePos, sleepDuration)
+        # binary search for closest link
+
+        selectedLink = 5
+        targetObj.Move(selectedLink, mousePos, sleepDuration)
+
     time.sleep(sleepDuration)
 
 p.disconnect()
