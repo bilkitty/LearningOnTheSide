@@ -15,12 +15,12 @@ import sys
   
   
 from collections import defaultdict 
-from windy_gridworld import WindyGridworldEnv 
+from windy_gridworld import WindyGridWorldEnv 
 import plotting 
 
 matplotlib.style.use("ggplot")
 
-windyGridEnv = WindyGridworldEnv()
+windyGridEnv = WindyGridWorldEnv()
 nEpisodes = 10
 
 # Epsilon greedy algo: with prob (1-eps), choose action 

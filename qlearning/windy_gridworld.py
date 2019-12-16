@@ -11,7 +11,7 @@ RIGHT = 1
 DOWN = 2
 LEFT = 3
 
-class WindyGridworldEnv(discrete.DiscreteEnv):
+class WindyGridWorldEnv(discrete.DiscreteEnv):
 
     metadata = {'render.modes': ['human', 'ansi']}
     startPos = (3, 0) 
@@ -58,7 +58,7 @@ class WindyGridworldEnv(discrete.DiscreteEnv):
         isd = np.zeros(nS)
         isd[np.ravel_multi_index(self.startPos, self.shape)] = 1.0
 
-        super(WindyGridworldEnv, self).__init__(nS, nA, P, isd)
+        super(WindyGridWorldEnv, self).__init__(nS, nA, P, isd)
 
     def render(self, heading, mode='human', close=False):
         self._render(heading, mode, close)
@@ -67,7 +67,7 @@ class WindyGridworldEnv(discrete.DiscreteEnv):
         if close:
             return
 
-        if mode != 'ansi':
+        if mode != 'ansi': # system calls should generally be avoided...
             outfile = sys.stdout
             os.system('cls' if os.name == 'nt' else 'clear')
         else:
