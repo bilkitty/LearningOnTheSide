@@ -54,8 +54,8 @@ class RopeObj:
         def __init__(self, massId):
             self.m_id = massId
             self.m_mass = 0 
-            self.m_inertia = 0 
-            self.m_position = [0,0,0]
+            self.m_inertia = np.zeros(3,3)
+            self.m_position = np.zeros(3)
 
         def SetPhysicalProperties(mass, inertia):
             self.m_mass = mass
@@ -77,7 +77,7 @@ class RopeObj:
             self.m_kSpring = 100000 
             self.m_kBend = 100000
             self.m_length = 0 
-            self.m_orientation = [0,0,0] 
+            self.m_orientation = np.zeros(3) 
 
         def SetPhysicalProperties(springConstant, bendConstant, restPosition=0):
             self.m_kSpring = springConstant
@@ -111,12 +111,13 @@ class RopeObj:
         return
 
     def CreateRopeModel(self, numJoints):
-
+        inertia = np.identity(3) 
+        inertia[3,3] = 0
         self.m_massSpringModel = np.empty(numJoints)
         for i in np.arange(numJoints):
             pm = PointMass(i)
             lk = Spring(i)
-            pm.SetPhysicalProperties(2, 0.0495)  # Should read from file
+            pm.SetPhysicalProperties(0.0495, )  # Should read from file
             self.m_massSpringModel[i] = (pm, lk)  
 
         return
