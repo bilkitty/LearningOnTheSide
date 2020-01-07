@@ -15,11 +15,11 @@ from matplotlib import pyplot as plt
 
 # Rendering mode; choose from ['human', 'ansi']
 MODE = "human"
-FPS = 10 
+FPS = 10
 FPS_FACTOR = 30
 N_CLIP = 20
-MAX_TRAINING_EPISODES = 10
-MAX_TRAINING_EPOCHS = 10000
+MAX_TRAINING_EPISODES = 100000
+MAX_TRAINING_EPOCHS = 1000000
 
 # Qlearning params
 LR_ALPHA = 0.1
@@ -64,7 +64,7 @@ Returns
     2d array        a q-table of size m states by n actions
     Eval outputs    frames, epoch and penalty counts, etc.
 
-ExecutePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000)
+EvaluatePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000)
     Uses learnt q-values to exploit best actions to find goal state. 
 
 Parameters
@@ -82,13 +82,13 @@ Returns
 Learning
 
 Bruteforce Search
-Actions are taken randomly until the task is complete or timeout. This mehtod 
+Actions are taken randomly until the task is complete or timeout. This method 
 completely ignores the env's reward.
 
 Q-learning 
 The reward that results from a particular action-state pair is
 logged in the form of a q-value table. Each value in the table corresponds to
-the "reprentative quality" of an action taken from that state. In other words,
+the "representative quality" of an action taken from that state. In other words,
 the q-value captures a notion of "goodness/badness" of an action specific to
 an instance of the environment.
 
@@ -115,7 +115,7 @@ In this example, the data structure we'll use for q-value storage is a table.
 The table's dimensions are M=size of STATE SPACE by N=size of ACTION SPACE
 
 Interesting experiments:
-    selection of initial values - in the example, zero initialization is used. WHy not stochastic? What if we initalize with uniformly random values? Gaussian? Another distro?
+    selection of initial values - in the example, zero initialization is used. WHy not stochastic? What if we initialize with uniformly random values? Gaussian? Another distro?
 
 """
 
@@ -180,21 +180,14 @@ def LoadQTable(filepath):
     # some checks
     return qtable
 
-# TODO:
-# plotting idea -  a heatmap of states represented as 5x5 grid?
-#                  create 6 plots for each action where each plot is a 5x5 2d heatmap showing the qvalue for a particular action
-#                  not sure how to reshape the rows (states) into the grid
-#                      25 possible grid positions
-#                      4 possible correct pickup locations     -> 100 states; passenger is waiting for pickup
-#                      4 possible target drop off locations    -> 400 states; passenger is in vehicle 
-#                      
 def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000):
     qTable = LoadQTable(QTABLE_FILE) if SHOULD_RECYCLE else CreateQTable(env.observation_space.n, env.action_space.n)
     textinfo = f"qt: {qTable.shape}\nProgress...\n"
     timings = ""
     
     trainingResults = []
-    for i in range(0, maxEpisodes):
+    globalStart = timer()
+    for i in range(1, maxEpisodes + 1):
         r = 0
         totalReward = 0
         epochs = 0
@@ -206,20 +199,20 @@ def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000):
         # extras
         start = timer()
         ahist = np.zeros(env.action_space.n)
-        while not done and epochs < maxEpochs:
+        while not done:
             if random.uniform(0, 1) < EPSILON:
                 a = env.action_space.sample()
             else:
                 a = np.argmax(qTable[s])        # Get maximizing parameter 
 
-            # Update qtable after taking action
-            sNext, r, done, info = env.step(a)
-
             q = qTable[s,a]
+
+            sNext, r, done, info = env.step(a)
             qMaxFuture = np.max(qTable[sNext]) # Get maximal value
 
-            qTable[sNext,a] = (1 - LR_ALPHA) * q + LR_ALPHA * (r + DR_GAMMA * qMaxFuture)
-
+            # Update qtable for current state and action
+            qTable[s,a] = (1 - LR_ALPHA) * q + LR_ALPHA * (r + DR_GAMMA * qMaxFuture)
+            # Update state
             s = sNext
 
             # log number epochs, penalties, and action counts 
@@ -241,10 +234,11 @@ def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000):
         timings = textinfo + f"{i}: elapsed {timer() - start: 0.2f}s\n"
         trainingResults.append(EvaluationOutputs(frames, epochs, penalties, totalReward, done))
 
-    return qTable, trainingResults
+    return qTable, trainingResults, timer() - globalStart
 
-def ExecutePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000):
+def EvaluatePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000):
     evaluationResults = []
+    globalStart = timer()
     for i in range(maxEpisodes):
         r = 0
         epochs = 0
@@ -253,7 +247,6 @@ def ExecutePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000):
         done = False
         s = env.reset() 
         
-        start = timer()
         ahist = np.zeros(env.action_space.n)
         totalReward = 0
         while not done and epochs < maxEpochs:
@@ -288,7 +281,7 @@ def ExecutePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000):
         res.SetActions(ahist)
         evaluationResults.append(res)
 
-    return evaluationResults
+    return evaluationResults, timer() - globalStart
 
 """
 Environment
@@ -318,7 +311,7 @@ State space
     appropriate mapping.
 
 Notes:  This reward structure seems to allow repeated pickup of the passenger
-after they are in the taxi. This sitation be an example of how an over
+after they are in the taxi. This situation be an example of how an over
 simplified reward signal might allow the system to waste resources, in this case time. 
 """
 
@@ -462,9 +455,6 @@ def Refresh():
         os.system('cls' if os.name == 'nt' else 'clear')
     return
 
-# TODO: plot all rewards and avg
-#       plot histogram of action counts
-#       plot the length (epoch count) per episode
 def SaveAsPickle(contents, filename):
     f = open(filename, "wb")
     pkl.dump(contents, f)
@@ -482,6 +472,7 @@ def main():
     infoText += f"obs space: {env.observation_space}\n"
 
     qtable = None
+    totalTrainingTime = totalEvaluationTime = 0
     if (len(sys.argv) > 1 and sys.argv[1] == "0"):
         print("Bruteforcing it")
         allOutputs = BruteForceSearch(env)
@@ -491,15 +482,15 @@ def main():
             qtable = LoadQTable(POLICY_FILE)
             print("Loaded policy")
         else:
-            qtable, trainingOutput = LearnPolicy(env, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
+            qtable, trainingOutput, totalTrainingTime = LearnPolicy(env, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
             SaveAsPickle(qtable, POLICY_FILE)
             SaveAsPickle(trainingOutput, "train.pkl")
             print("Finished policy training")
 
         assert qtable is not None, "Failed to create qtable"
-        allOutputs = ExecutePolicy(env, qtable, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
+        allOutputs, totalEvaluationTime = EvaluatePolicy(env, qtable, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
         SaveAsPickle(allOutputs, "eval.pkl")
-        print("Finished execution")
+        print(f"Finished execution:\ntraining time: {totalTrainingTime}\ntest time: {totalEvaluationTime}")
     else:
         print("udk wtf i want")
         return
