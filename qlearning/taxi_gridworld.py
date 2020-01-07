@@ -562,7 +562,7 @@ def main():
         assert len(qValGrids) == 20, f"Unexpected no. qValGrids {len(qValGrids)}"
         assert qValGrids[0].shape[0] == 25, f"Unexpected dimension of action-state grid {qValGrids[0].shape[0]}"
         for i, qvg in enumerate(qValGrids):
-            passengerLoc = stateNames[i // 5]
+            passengerLoc = stateNames[i // 4]
             destinationLoc = stateNames[i % 4]
 
             bag = np.array(bestActGrids[i])
