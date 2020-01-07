@@ -18,8 +18,8 @@ MODE = "human"
 FPS = 10 
 FPS_FACTOR = 30
 N_CLIP = 20
-MAX_TRAINING_EPISODES = 10000
-MAX_TRAINING_EPOCHS = 100000
+MAX_TRAINING_EPISODES = 10
+MAX_TRAINING_EPOCHS = 10000
 
 # Qlearning params
 LR_ALPHA = 0.1
@@ -151,9 +151,9 @@ def BruteForceSearch(env, maxEpisodes=100, maxEpochs=100000):
             a = env.action_space.sample()
             s, r, done, info = env.step(a)
 
-            if (r == PenaltyTypes.WrongDropOrPick and a == Actions.Pickup):
+            if (r == PenaltyTypes.WrongDropOrPick and a == Action.Pickup):
                 penalties[0] += 1
-            if (r == PenaltyTypes.WrongDropOrPick and a == Actions.Dropoff):
+            if (r == PenaltyTypes.WrongDropOrPick and a == Action.Dropoff):
                 penalties[1] += 1
 
             frames.append({
@@ -202,6 +202,7 @@ def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000):
         frames = []
         done = False
         s = env.reset() 
+        
         # extras
         start = timer()
         ahist = np.zeros(env.action_space.n)
@@ -222,9 +223,9 @@ def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000):
             s = sNext
 
             # log number epochs, penalties, and action counts 
-            if (r == PenaltyTypes.WrongDropOrPick and a == Actions.Pickup):
+            if (r == PenaltyTypes.WrongDropOrPick and a == Action.Pickup):
                 penalties[0] += 1
-            if (r == PenaltyTypes.WrongDropOrPick and a == Actions.Dropoff):
+            if (r == PenaltyTypes.WrongDropOrPick and a == Action.Dropoff):
                 penalties[1] += 1
 
             ahist[a] += 1
@@ -251,6 +252,7 @@ def ExecutePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000):
         frames = []
         done = False
         s = env.reset() 
+        
         start = timer()
         ahist = np.zeros(env.action_space.n)
         totalReward = 0
@@ -260,9 +262,9 @@ def ExecutePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000):
             s, r, done, info = env.step(a)
 
             # Update outputs
-            if (r == PenaltyTypes.WrongDropOrPick and a == Actions.Pickup):
+            if (r == PenaltyTypes.WrongDropOrPick and a == Action.Pickup):
                 penalties[0] += 1
-            if (r == PenaltyTypes.WrongDropOrPick and a == Actions.Dropoff):
+            if (r == PenaltyTypes.WrongDropOrPick and a == Action.Dropoff):
                 penalties[1] += 1
 
             frames.append({
@@ -326,23 +328,40 @@ simplified reward signal might allow the system to waste resources, in this case
 #class TaxiGridWorld():
 
 class State:
+    posR = 0
+    posG = 1
+    posY = 2
+    posB = 3
+    onBoard = 4
     def __init__(self):
-        self.taxiY = 3
-        self.taxiX = 1
-        self.pickup = 2
-        self.dropoff = 0    
+        self.taxiY = State.posB 
+        self.taxiX = State.posG  
+        self.pickup = State.posY  
+        self.dropoff = State.posR 
+    
+    @staticmethod
+    # Avoiding dependence on array indexing to hopefully mitigate bugs in future
+    def Enumerate():
+        return [(State.posR, "R"), (State.posG, "G"), (State.posY, "Y"), (State.posB, "B"), (State.onBoard, "OnBoard")]
 
 class PenaltyTypes:
     Time = -1
     WrongDropOrPick = -10
 
-class Actions:
+class Action:
     MoveS = 0
     MoveN = 1
     MoveE = 2
     MoveW = 3
     Pickup = 4
     Dropoff = 5
+
+    @staticmethod
+    # Avoiding dependence on array indexing to hopefully mitigate bugs in future
+    def Enumerate():
+        return [(Action.MoveS, "v"), (Action.MoveN, "^"), 
+                (Action.MoveE, ">"), (Action.MoveW, "<"), 
+                (Action.Pickup, "P"), (Action.Dropoff, "D")]
 
 def RenderIPython(outputs):
     print("\ttotal epochs\t\tpenalty rate")
@@ -392,7 +411,7 @@ def Render(extantDisplay, episodeOutput, close=False):
         contents += f"\t{e}\t\t\t{p / e:.2f}\n"
 
         if (not hasPassenger
-            and frame["action"] == Actions.Pickup 
+            and frame["action"] == Action.Pickup 
             and frame["reward"] != PenaltyTypes.WrongDropOrPick):
             sleepDur = FPS_FACTOR / FPS
             contents += f"acquired passenger {pid}"
@@ -424,7 +443,7 @@ def Render(extantDisplay, episodeOutput, close=False):
         contents += "\ttotal epochs\t\tpenalty rate\n"
         contents += f"\t{e}\t\t\t{p / e:.2f}\n"
 
-        if (frame["action"] == Actions.Pickup 
+        if (frame["action"] == Action.Pickup 
             and frame["reward"] != PenaltyTypes.WrongDropOrPick):
             sleepDur = FPS_FACTOR / FPS
             r = frame["reward"]
@@ -456,59 +475,45 @@ def main():
     env.reset()
 
     s = State()
+    # What exactly is this function doing?
     env.s = env.encode(s.taxiY, s.taxiX, s.pickup, s.dropoff)
 
     infoText = f"state space: {env.action_space}\n"
     infoText += f"obs space: {env.observation_space}\n"
 
+    qtable = None
     if (len(sys.argv) > 1 and sys.argv[1] == "0"):
         print("Bruteforcing it")
         allOutputs = BruteForceSearch(env)
     elif (len(sys.argv) > 1 and sys.argv[1] == "1"):
         print("Q-learning it")
         if (os.path.exists(POLICY_FILE)):
-            policy = LoadQTable(POLICY_FILE)
+            qtable = LoadQTable(POLICY_FILE)
             print("Loaded policy")
         else:
-            policy, trainingOutput = LearnPolicy(env, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
-            SaveAsPickle(policy, POLICY_FILE)
+            qtable, trainingOutput = LearnPolicy(env, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
+            SaveAsPickle(qtable, POLICY_FILE)
             SaveAsPickle(trainingOutput, "train.pkl")
             print("Finished policy training")
 
-        allOutputs = ExecutePolicy(env, policy, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
+        assert qtable is not None, "Failed to create qtable"
+        allOutputs = ExecutePolicy(env, qtable, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
         SaveAsPickle(allOutputs, "eval.pkl")
         print("Finished execution")
     else:
         print("udk wtf i want")
         return
 
-    # allOutputs.sort(key=lambda x: x.totalReward, reverse=True)
-
-    # outputs = allOutputs[:3]
-
-    # # Render outputs
-    # for i, episode in enumerate(outputs):
-    #     leadingText = infoText + "\n" 
-    #     leadingText += f"[{i}] "
-    #     Render(leadingText, episode)
-    #     sleep(3)
-
-    # # Print some simple stats
-    # e = np.array([x.epochCount for x in outputs]) 
-    # p = np.array([x.failedPickAndDropCount.sum() for x in outputs])
-    # print("------------------------------------------")
-    # print("\tavg epochs\t\tavg penalties")
-    # print(f"\t{e.mean():.2f} +/-{e.std():.2f}\t{p.mean():.2f} +/-{p.std():.2f}")
-
     if not SHOULD_PLOT:
         return
 
-    a0 = [x.actions[Actions.MoveS] for x in allOutputs]
-    a1 = [x.actions[Actions.MoveN] for x in allOutputs]
-    a2 = [x.actions[Actions.MoveE] for x in allOutputs]
-    a3 = [x.actions[Actions.MoveW] for x in allOutputs]
-    a4 = [x.actions[Actions.Pickup] for x in allOutputs]
-    a5 = [x.actions[Actions.Dropoff] for x in allOutputs]
+    plt.figure(num=1, figsize=(8,8), dpi=100)
+    a0 = [x.actions[Action.MoveS] for x in allOutputs]
+    a1 = [x.actions[Action.MoveN] for x in allOutputs]
+    a2 = [x.actions[Action.MoveE] for x in allOutputs]
+    a3 = [x.actions[Action.MoveW] for x in allOutputs]
+    a4 = [x.actions[Action.Pickup] for x in allOutputs]
+    a5 = [x.actions[Action.Dropoff] for x in allOutputs]
     plt.plot(a0, color='red', linewidth=1, label="s")
     plt.plot(a1, color='orange', linewidth=1, label="n")
     plt.plot(a2, color='green', linewidth=1, label="e")
@@ -519,40 +524,78 @@ def main():
     plt.ylabel("action count")
     plt.legend()
     plt.savefig("episode_action_counts.png")
-    #plt.show()
 
+    plt.figure(num=1, figsize=(8,8), dpi=100)
     rewards = [x.totalReward for x in allOutputs]
     durations = [x.epochCount for x in allOutputs]
     penalties = [x.failedPickAndDropCount.sum() for x in allOutputs]
-    plt.subplot(311)
+    plt.subplot(221)
     plt.plot(rewards)
     plt.xlabel("episode")
     plt.ylabel("total reward")
-    plt.subplot(312)
+    plt.subplot(222)
     plt.plot(durations)
     plt.xlabel("episode")
     plt.ylabel("total epochs")
-    plt.subplot(313)
-    #plt.plot(penalties)
-    #plt.xlabel("episode")
-    #plt.ylabel("total penalties")
-    #plt.savefig("episode_stats.png")
-    #plt.show()
 
-    # show values for 20 types of states in qtable
-    for a in range(policy.shape[1]):
-        grids = []
-        states = policy[:,a]
-        states = states.reshape(500, 1)
-        for x in range(0, states.shape[0], 25):
-            y = x + 25
-            grids.append(states[x:y])
+    stateNames = [x[1] for x in State.Enumerate()]
+    actionNames = [x[1] for x in Action.Enumerate()]
+    for s in range(qtable.shape[0]):
+        bestActGrids = []
+        bestActions = np.array([np.argmax(s) for s in qtable])
+        for x in range(20):
+            bestActGrids.append(bestActions[x::20])
 
-        for i, g in enumerate(grids):
-            g = np.array(g)
-            assert g.shape == (25,1), f"Unexpected dimension of action-state grid: {g.shape}"
-            plt.imshow(g.reshape(5, 5), cmap="hot", interpolation="nearest")
-            plt.savefig("/home/bilkit/Workspace/pybullet/scripts/qlearning/ipython3/action{}_{}.png".format(a, i))
+        assert len(bestActGrids) == 20, f"Unexpected no. best action grids {len(bestActGrids)}"
+        assert bestActGrids[0].shape[0] == 25, f"Unexpected dimension of best action grid {bestActGrids[0].shape[0]}"
+
+    # Show best action per grid position
+    # Show qvalue per grid position for each action
+    sp2 = plt.subplot(223)
+    sp3 = plt.subplot(224)
+    for a in range(qtable.shape[1]):
+        qValGrids = []
+        stateVals = qtable[:,a]
+        for x in range(20):
+            qValGrids.append(stateVals[x::20])
+            
+        assert len(qValGrids) == 20, f"Unexpected no. qValGrids {len(qValGrids)}"
+        assert qValGrids[0].shape[0] == 25, f"Unexpected dimension of action-state grid {qValGrids[0].shape[0]}"
+        for i, qvg in enumerate(qValGrids):
+            passengerLoc = stateNames[i // 5]
+            destinationLoc = stateNames[i % 4]
+
+            bag = np.array(bestActGrids[i])
+            sp2.imshow(np.ones((5, 5)), cmap="Greys")
+            sp2.text(0,4, f"Y\n")       # bottom left corner
+            sp2.text(0,0, f"R\n")       # top left corner
+            sp2.text(4,0, f"G\n")       # top right corner
+            sp2.text(3,4, f"B\n")       # 1 unit left of the bottom right corner
+            for j in range(len(bag)):
+                xj = j % 5
+                yj = j // 5
+                jj = 5 * yj + xj
+                bbox = dict(facecolor='green', alpha=0.5) if bag[jj] == a else None
+                sp2.text(xj, yj, f"{actionNames[bag[jj]]}: {qtable[jj][bag[jj]]:.2f}", fontsize=6, bbox=bbox)
+            sp2.set(xlabel=f"'{passengerLoc}' -> '{destinationLoc}'")
+            
+            qvg = np.array(qvg)
+            sp3.imshow(qvg.reshape(5, 5), cmap="hot")
+            sp3.text(0,4, f"Y\n")       # bottom left corner
+            sp3.text(0,0, f"R\n")       # top left corner
+            sp3.text(4,0, f"G\n")       # top right corner
+            sp3.text(3,4, f"B\n")       # 1 unit left of the bottom right corner
+            for j in range(len(qvg)):
+                xj = j % 5
+                yj = j // 5
+                jj = 5 * yj + xj
+                sp3.text(xj, yj, f"{round(qvg[jj],2)}", fontsize=6)
+            sp3.set(xlabel=f"'{passengerLoc}' -> '{destinationLoc}', max qval={qvg.max():.3f}")
+            
+            plt.savefig(f"{actionNames[a]}_pass{passengerLoc}_dest{destinationLoc}.png")
+            sp2.cla()
+            sp3.cla()
+           
 
 if __name__ == "__main__":
     main()
