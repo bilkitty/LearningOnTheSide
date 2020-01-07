@@ -172,7 +172,6 @@ def BruteForceSearch(env, maxEpisodes=100, maxEpochs=100000):
     return evaluationResults
 
 def CreateQTable(m,n):
-    # TODO: explore different initialization schemes - e.g., uniformly random, gaussian, other, etc.
     return np.zeros([m,n])
 
 def LoadQTable(filepath):
@@ -180,6 +179,10 @@ def LoadQTable(filepath):
     qtable = pkl.load(f)
     # some checks
     return qtable
+
+#
+# TODO: Add decay for epsilon.
+#
 
 def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000, verbose=False):
     qTable = LoadQTable(QTABLE_FILE) if SHOULD_RECYCLE else CreateQTable(env.observation_space.n, env.action_space.n)
@@ -326,7 +329,12 @@ simplified reward signal might allow the system to waste resources, in this case
 #
 # TODO: make taxi grid world class so that main.py can invoke it. 
 #
+
 #class TaxiGridWorld():
+
+#
+# TODO: add support for different types of environments.
+#
 
 class State:
     posR = 0
