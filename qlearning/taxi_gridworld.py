@@ -18,6 +18,7 @@ MODE = "human"
 FPS = 10
 FPS_FACTOR = 30
 N_CLIP = 20
+PLOT_SAMPLE_FREQ = 5000
 MAX_TRAINING_EPISODES = 100000
 MAX_TRAINING_EPOCHS = 1000000
 
@@ -180,10 +181,13 @@ def LoadQTable(filepath):
     # some checks
     return qtable
 
-def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000):
+def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000, verbose=False):
     qTable = LoadQTable(QTABLE_FILE) if SHOULD_RECYCLE else CreateQTable(env.observation_space.n, env.action_space.n)
     textinfo = f"qt: {qTable.shape}\nProgress...\n"
     timings = ""
+
+    if (not verbose):
+        print(textinfo)
     
     trainingResults = []
     globalStart = timer()
@@ -222,7 +226,7 @@ def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000):
                 penalties[1] += 1
 
             ahist[a] += 1
-            if (epochs % (maxEpochs / 2) == 0):
+            if (verbose and epochs % (maxEpochs / 2) == 0):
                 Refresh()
                 print(f"Training\ne={i}\nr={r}\nq={qTable[s,a]: .2f}")
                 totalCount = ahist.sum()
@@ -236,7 +240,11 @@ def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000):
 
     return qTable, trainingResults, timer() - globalStart
 
-def EvaluatePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000):
+def EvaluatePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000, verbose=False):
+
+    if (not verbose):
+        print("Evaluating policy...")
+
     evaluationResults = []
     globalStart = timer()
     for i in range(maxEpisodes):
@@ -269,7 +277,7 @@ def EvaluatePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000):
 
 
             ahist[a] += 1
-            if (epochs % (maxEpochs * 2) == 0):
+            if (verbose and epochs % (maxEpochs * 2) == 0):
                 Refresh()
                 print(f"Evaluating\ne={i}\nr={r}\nq={qTable[s,a]: .2f}")
                 totalCount = ahist.sum()
@@ -476,6 +484,8 @@ def main():
     if (len(sys.argv) > 1 and sys.argv[1] == "0"):
         print("Bruteforcing it")
         allOutputs = BruteForceSearch(env)
+        print("Finished search")
+        return
     elif (len(sys.argv) > 1 and sys.argv[1] == "1"):
         print("Q-learning it")
         if (os.path.exists(POLICY_FILE)):
@@ -485,12 +495,12 @@ def main():
             qtable, trainingOutput, totalTrainingTime = LearnPolicy(env, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
             SaveAsPickle(qtable, POLICY_FILE)
             SaveAsPickle(trainingOutput, "train.pkl")
-            print("Finished policy training")
+            print(f"Finished training: {totalTrainingTime: .4f}s")
 
         assert qtable is not None, "Failed to create qtable"
         allOutputs, totalEvaluationTime = EvaluatePolicy(env, qtable, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
         SaveAsPickle(allOutputs, "eval.pkl")
-        print(f"Finished execution:\ntraining time: {totalTrainingTime}\ntest time: {totalEvaluationTime}")
+        print(f"Finished evaluation: {totalEvaluationTime: .4f}s")
     else:
         print("udk wtf i want")
         return
@@ -516,16 +526,16 @@ def main():
     plt.legend()
     plt.savefig("episode_action_counts.png")
 
-    plt.figure(num=1, figsize=(8,8), dpi=100)
+    plt.figure(num=1, figsize=(8,10), dpi=100)
     rewards = [x.totalReward for x in allOutputs]
     durations = [x.epochCount for x in allOutputs]
     penalties = [x.failedPickAndDropCount.sum() for x in allOutputs]
     plt.subplot(221)
-    plt.plot(rewards)
+    plt.plot(rewards, linewidth=0, marker="o", markevery=PLOT_SAMPLE_FREQ)
     plt.xlabel("episode")
     plt.ylabel("total reward")
     plt.subplot(222)
-    plt.plot(durations)
+    plt.plot(durations, linewidth=0, marker="o", markevery=PLOT_SAMPLE_FREQ)
     plt.xlabel("episode")
     plt.ylabel("total epochs")
 
