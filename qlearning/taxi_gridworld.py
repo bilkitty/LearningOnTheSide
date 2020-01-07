@@ -15,10 +15,12 @@ from matplotlib import pyplot as plt
 
 # Rendering mode; choose from ['human', 'ansi']
 MODE = "human"
-FPS = 10 
+FPS = 10
 FPS_FACTOR = 30
 N_CLIP = 20
-MAX_TRAINING_EPISODES = 10000
+PLOT_SAMPLE_FREQ = 5000
+MAX_TRAINING_EPISODES = 100000
+MAX_TRAINING_EPOCHS = 1000000
 
 # Qlearning params
 LR_ALPHA = 0.1
@@ -27,6 +29,7 @@ EPSILON = 0.1
 QTABLE_FILE = "qtable.pkl"
 POLICY_FILE = "policy.pkl"
 SHOULD_RECYCLE = False 
+SHOULD_PLOT = True
 
 #
 # Tutorial
@@ -34,16 +37,59 @@ SHOULD_RECYCLE = False
 #
 
 """
+Summary of required packages
+python3 -m pip install gym, numpy, decorator, matplotlib
+sudo apt-get install python3.6-tk
+
+Summary of key functions
+
+
+BruteForceSearch(env, maxEpisodes=100, maxEpochs=100000)
+    Performs random actions until goal state is reached.
+
+Parameters
+    env             openai gym environment object
+    maxEpisodes     max number of episodes
+    maxEpochs       max number of epochs
+Returns
+    Eval outputs    frames, epoch and penalty counts, etc.
+
+LearnPolicy(env, maxEpisodes=100, maxEpochs=10000)
+    Estimates q-values for action state pairs via q-learning algorithm.
+
+Parameters
+    env             openai gym environment object
+    maxEpisodes     max number of episodes
+    maxEpochs       max number of epochs
+Returns
+    2d array        a q-table of size m states by n actions
+    Eval outputs    frames, epoch and penalty counts, etc.
+
+EvaluatePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000)
+    Uses learnt q-values to exploit best actions to find goal state. 
+
+Parameters
+    env             openai gym environment object
+    qTable          a 2d table of q-values for state-action pairs
+    maxEpisodes     max number of episodes
+    maxEpochs       max number of epochs
+Returns
+    Eval outputs    frames, epoch and penalty counts, etc.
+
+"""
+
+
+"""
 Learning
 
 Bruteforce Search
-Actions are taken randomly until the task is complete or timeout. This mehtod 
+Actions are taken randomly until the task is complete or timeout. This method 
 completely ignores the env's reward.
 
 Q-learning 
 The reward that results from a particular action-state pair is
 logged in the form of a q-value table. Each value in the table corresponds to
-the "reprentative quality" of an action taken from that state. In other words,
+the "representative quality" of an action taken from that state. In other words,
 the q-value captures a notion of "goodness/badness" of an action specific to
 an instance of the environment.
 
@@ -70,7 +116,7 @@ In this example, the data structure we'll use for q-value storage is a table.
 The table's dimensions are M=size of STATE SPACE by N=size of ACTION SPACE
 
 Interesting experiments:
-    selection of initial values - in the example, zero initialization is used. WHy not stochastic? What if we initalize with uniformly random values? Gaussian? Another distro?
+    selection of initial values - in the example, zero initialization is used. WHy not stochastic? What if we initialize with uniformly random values? Gaussian? Another distro?
 
 """
 
@@ -103,14 +149,12 @@ def BruteForceSearch(env, maxEpisodes=100, maxEpochs=100000):
         done = False
         frames = []
         while not done and epochs <= maxEpochs:
-            # Brute force approach
-            #   take random actions until goal is reached
             a = env.action_space.sample()
             s, r, done, info = env.step(a)
 
-            if (r == PenaltyTypes.WrongDropOrPick and a == Actions.Pickup):
+            if (r == PenaltyTypes.WrongDropOrPick and a == Action.Pickup):
                 penalties[0] += 1
-            if (r == PenaltyTypes.WrongDropOrPick and a == Actions.Dropoff):
+            if (r == PenaltyTypes.WrongDropOrPick and a == Action.Dropoff):
                 penalties[1] += 1
 
             frames.append({
@@ -137,21 +181,17 @@ def LoadQTable(filepath):
     # some checks
     return qtable
 
-# TODO:
-# plotting idea -  a heatmap of states represented as 5x5 grid?
-#                  create 6 plots for each action where each plot is a 5x5 2d heatmap showing the qvalue for a particular action
-#                  not sure how to reshape the rows (states) into the grid
-#                      25 possible grid positions
-#                      4 possible correct pickup locations     -> 100 states; passenger is waiting for pickup
-#                      4 possible target drop off locations    -> 400 states; passenger is in vehicle 
-#                      
-def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000):
+def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000, verbose=False):
     qTable = LoadQTable(QTABLE_FILE) if SHOULD_RECYCLE else CreateQTable(env.observation_space.n, env.action_space.n)
     textinfo = f"qt: {qTable.shape}\nProgress...\n"
     timings = ""
+
+    if (not verbose):
+        print(textinfo)
     
     trainingResults = []
-    for i in range(0, maxEpisodes):
+    globalStart = timer()
+    for i in range(1, maxEpisodes + 1):
         r = 0
         totalReward = 0
         epochs = 0
@@ -159,33 +199,34 @@ def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000):
         frames = []
         done = False
         s = env.reset() 
+        
         # extras
         start = timer()
         ahist = np.zeros(env.action_space.n)
-        while not done and epochs < maxEpochs:
+        while not done:
             if random.uniform(0, 1) < EPSILON:
                 a = env.action_space.sample()
             else:
                 a = np.argmax(qTable[s])        # Get maximizing parameter 
 
-            # Update qtable after taking action
-            sNext, r, done, info = env.step(a)
-
             q = qTable[s,a]
+
+            sNext, r, done, info = env.step(a)
             qMaxFuture = np.max(qTable[sNext]) # Get maximal value
 
-            qTable[sNext,a] = (1 - LR_ALPHA) * q + LR_ALPHA * (r + DR_GAMMA * qMaxFuture)
-
+            # Update qtable for current state and action
+            qTable[s,a] = (1 - LR_ALPHA) * q + LR_ALPHA * (r + DR_GAMMA * qMaxFuture)
+            # Update state
             s = sNext
 
             # log number epochs, penalties, and action counts 
-            if (r == PenaltyTypes.WrongDropOrPick and a == Actions.Pickup):
+            if (r == PenaltyTypes.WrongDropOrPick and a == Action.Pickup):
                 penalties[0] += 1
-            if (r == PenaltyTypes.WrongDropOrPick and a == Actions.Dropoff):
+            if (r == PenaltyTypes.WrongDropOrPick and a == Action.Dropoff):
                 penalties[1] += 1
 
             ahist[a] += 1
-            if (epochs % (maxEpochs / 2) == 0):
+            if (verbose and epochs % (maxEpochs / 2) == 0):
                 Refresh()
                 print(f"Training\ne={i}\nr={r}\nq={qTable[s,a]: .2f}")
                 totalCount = ahist.sum()
@@ -197,10 +238,15 @@ def LearnPolicy(env, maxEpisodes=100, maxEpochs=10000):
         timings = textinfo + f"{i}: elapsed {timer() - start: 0.2f}s\n"
         trainingResults.append(EvaluationOutputs(frames, epochs, penalties, totalReward, done))
 
-    return qTable, trainingResults
+    return qTable, trainingResults, timer() - globalStart
 
-def ExecutePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000):
+def EvaluatePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000, verbose=False):
+
+    if (not verbose):
+        print("Evaluating policy...")
+
     evaluationResults = []
+    globalStart = timer()
     for i in range(maxEpisodes):
         r = 0
         epochs = 0
@@ -208,7 +254,7 @@ def ExecutePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000):
         frames = []
         done = False
         s = env.reset() 
-        start = timer()
+        
         ahist = np.zeros(env.action_space.n)
         totalReward = 0
         while not done and epochs < maxEpochs:
@@ -217,9 +263,9 @@ def ExecutePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000):
             s, r, done, info = env.step(a)
 
             # Update outputs
-            if (r == PenaltyTypes.WrongDropOrPick and a == Actions.Pickup):
+            if (r == PenaltyTypes.WrongDropOrPick and a == Action.Pickup):
                 penalties[0] += 1
-            if (r == PenaltyTypes.WrongDropOrPick and a == Actions.Dropoff):
+            if (r == PenaltyTypes.WrongDropOrPick and a == Action.Dropoff):
                 penalties[1] += 1
 
             frames.append({
@@ -231,7 +277,7 @@ def ExecutePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000):
 
 
             ahist[a] += 1
-            if (epochs % (maxEpochs * 2) == 0):
+            if (verbose and epochs % (maxEpochs * 2) == 0):
                 Refresh()
                 print(f"Evaluating\ne={i}\nr={r}\nq={qTable[s,a]: .2f}")
                 totalCount = ahist.sum()
@@ -243,7 +289,7 @@ def ExecutePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000):
         res.SetActions(ahist)
         evaluationResults.append(res)
 
-    return evaluationResults
+    return evaluationResults, timer() - globalStart
 
 """
 Environment
@@ -260,9 +306,20 @@ passenger at the wrong location will incur -10 reward. Also, each move incurs
 the taxi and a pickup (incorrectly) occurs, then the env only gives a time penalty.
 The agent receives reward of 20 for successfully dropping off the passenger.
 
+Action space
+    There are six total possible actions. Obviously, only one action is taken at a time: 
+    4 directions of movement + pickup + dropoff.
+    
+
+State space
+    There are 500 total possible states, including when the passenger is in the car: 
+    5x5 grid positions x (4 + 1) passenger positions x 4 destinations 
+    Really, each row is a summarization of the car's and passenger's possible position in the grid. It 
+    doesn't clearly map to a particular visual representation of the grid. Or maybe we just need to find the
+    appropriate mapping.
 
 Notes:  This reward structure seems to allow repeated pickup of the passenger
-after they are in the taxi. This sitation be an example of how an over
+after they are in the taxi. This situation be an example of how an over
 simplified reward signal might allow the system to waste resources, in this case time. 
 """
 
@@ -272,23 +329,40 @@ simplified reward signal might allow the system to waste resources, in this case
 #class TaxiGridWorld():
 
 class State:
+    posR = 0
+    posG = 1
+    posY = 2
+    posB = 3
+    onBoard = 4
     def __init__(self):
-        self.taxiX = 3
-        self.taxiY = 1
-        self.pickup = 2
-        self.dropoff = 0    
+        self.taxiY = State.posB 
+        self.taxiX = State.posG  
+        self.pickup = State.posY  
+        self.dropoff = State.posR 
+    
+    @staticmethod
+    # Avoiding dependence on array indexing to hopefully mitigate bugs in future
+    def Enumerate():
+        return [(State.posR, "R"), (State.posG, "G"), (State.posY, "Y"), (State.posB, "B"), (State.onBoard, "OnBoard")]
 
 class PenaltyTypes:
     Time = -1
     WrongDropOrPick = -10
 
-class Actions:
+class Action:
     MoveS = 0
     MoveN = 1
     MoveE = 2
     MoveW = 3
     Pickup = 4
     Dropoff = 5
+
+    @staticmethod
+    # Avoiding dependence on array indexing to hopefully mitigate bugs in future
+    def Enumerate():
+        return [(Action.MoveS, "v"), (Action.MoveN, "^"), 
+                (Action.MoveE, ">"), (Action.MoveW, "<"), 
+                (Action.Pickup, "P"), (Action.Dropoff, "D")]
 
 def RenderIPython(outputs):
     print("\ttotal epochs\t\tpenalty rate")
@@ -338,7 +412,7 @@ def Render(extantDisplay, episodeOutput, close=False):
         contents += f"\t{e}\t\t\t{p / e:.2f}\n"
 
         if (not hasPassenger
-            and frame["action"] == Actions.Pickup 
+            and frame["action"] == Action.Pickup 
             and frame["reward"] != PenaltyTypes.WrongDropOrPick):
             sleepDur = FPS_FACTOR / FPS
             contents += f"acquired passenger {pid}"
@@ -370,7 +444,7 @@ def Render(extantDisplay, episodeOutput, close=False):
         contents += "\ttotal epochs\t\tpenalty rate\n"
         contents += f"\t{e}\t\t\t{p / e:.2f}\n"
 
-        if (frame["action"] == Actions.Pickup 
+        if (frame["action"] == Action.Pickup 
             and frame["reward"] != PenaltyTypes.WrongDropOrPick):
             sleepDur = FPS_FACTOR / FPS
             r = frame["reward"]
@@ -389,9 +463,6 @@ def Refresh():
         os.system('cls' if os.name == 'nt' else 'clear')
     return
 
-# TODO: plot all rewards and avg
-#       plot histogram of action counts
-#       plot the length (epoch count) per episode
 def SaveAsPickle(contents, filename):
     f = open(filename, "wb")
     pkl.dump(contents, f)
@@ -403,56 +474,47 @@ def main():
 
     s = State()
     # What exactly is this function doing?
-    env.s = env.encode(s.taxiX, s.taxiY, s.pickup, s.dropoff)
+    env.s = env.encode(s.taxiY, s.taxiX, s.pickup, s.dropoff)
 
     infoText = f"state space: {env.action_space}\n"
     infoText += f"obs space: {env.observation_space}\n"
 
+    qtable = None
+    totalTrainingTime = totalEvaluationTime = 0
     if (len(sys.argv) > 1 and sys.argv[1] == "0"):
         print("Bruteforcing it")
         allOutputs = BruteForceSearch(env)
+        print("Finished search")
+        return
     elif (len(sys.argv) > 1 and sys.argv[1] == "1"):
         print("Q-learning it")
         if (os.path.exists(POLICY_FILE)):
-            policy = LoadQTable(POLICY_FILE)
+            qtable = LoadQTable(POLICY_FILE)
             print("Loaded policy")
         else:
-            policy, trainingOutput = LearnPolicy(env, MAX_TRAINING_EPISODES)
-            SaveAsPickle(policy, POLICY_FILE)
+            qtable, trainingOutput, totalTrainingTime = LearnPolicy(env, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
+            SaveAsPickle(qtable, POLICY_FILE)
             SaveAsPickle(trainingOutput, "train.pkl")
-            print("Finished policy training")
+            print(f"Finished training: {totalTrainingTime: .4f}s")
 
-        allOutputs = ExecutePolicy(env, policy, 10, 100000)
+        assert qtable is not None, "Failed to create qtable"
+        allOutputs, totalEvaluationTime = EvaluatePolicy(env, qtable, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
         SaveAsPickle(allOutputs, "eval.pkl")
-        print("Finished execution")
+        print(f"Finished evaluation: {totalEvaluationTime: .4f}s")
     else:
         print("udk wtf i want")
         return
 
-    # allOutputs.sort(key=lambda x: x.totalReward, reverse=True)
+    if not SHOULD_PLOT:
+        return
 
-    # outputs = allOutputs[:3]
-
-    # # Render outputs
-    # for i, episode in enumerate(outputs):
-    #     leadingText = infoText + "\n" 
-    #     leadingText += f"[{i}] "
-    #     Render(leadingText, episode)
-    #     sleep(3)
-
-    # # Print some simple stats
-    # e = np.array([x.epochCount for x in outputs]) 
-    # p = np.array([x.failedPickAndDropCount.sum() for x in outputs])
-    # print("------------------------------------------")
-    # print("\tavg epochs\t\tavg penalties")
-    # print(f"\t{e.mean():.2f} +/-{e.std():.2f}\t{p.mean():.2f} +/-{p.std():.2f}")
-
-    a0 = [x.actions[Actions.MoveS] for x in allOutputs]
-    a1 = [x.actions[Actions.MoveN] for x in allOutputs]
-    a2 = [x.actions[Actions.MoveE] for x in allOutputs]
-    a3 = [x.actions[Actions.MoveW] for x in allOutputs]
-    a4 = [x.actions[Actions.Pickup] for x in allOutputs]
-    a5 = [x.actions[Actions.Dropoff] for x in allOutputs]
+    plt.figure(num=1, figsize=(8,8), dpi=100)
+    a0 = [x.actions[Action.MoveS] for x in allOutputs]
+    a1 = [x.actions[Action.MoveN] for x in allOutputs]
+    a2 = [x.actions[Action.MoveE] for x in allOutputs]
+    a3 = [x.actions[Action.MoveW] for x in allOutputs]
+    a4 = [x.actions[Action.Pickup] for x in allOutputs]
+    a5 = [x.actions[Action.Dropoff] for x in allOutputs]
     plt.plot(a0, color='red', linewidth=1, label="s")
     plt.plot(a1, color='orange', linewidth=1, label="n")
     plt.plot(a2, color='green', linewidth=1, label="e")
@@ -463,25 +525,78 @@ def main():
     plt.ylabel("action count")
     plt.legend()
     plt.savefig("episode_action_counts.png")
-    plt.show()
 
+    plt.figure(num=1, figsize=(8,10), dpi=100)
     rewards = [x.totalReward for x in allOutputs]
     durations = [x.epochCount for x in allOutputs]
     penalties = [x.failedPickAndDropCount.sum() for x in allOutputs]
-    plt.subplot(311)
-    plt.plot(rewards)
+    plt.subplot(221)
+    plt.plot(rewards, linewidth=0, marker="o", markevery=PLOT_SAMPLE_FREQ)
     plt.xlabel("episode")
     plt.ylabel("total reward")
-    plt.subplot(312)
-    plt.plot(durations)
+    plt.subplot(222)
+    plt.plot(durations, linewidth=0, marker="o", markevery=PLOT_SAMPLE_FREQ)
     plt.xlabel("episode")
     plt.ylabel("total epochs")
-    plt.subplot(313)
-    plt.plot(penalties)
-    plt.xlabel("episode")
-    plt.ylabel("total penalties")
-    plt.savefig("episode_stats.png")
-    plt.show()
+
+    stateNames = [x[1] for x in State.Enumerate()]
+    actionNames = [x[1] for x in Action.Enumerate()]
+    for s in range(qtable.shape[0]):
+        bestActGrids = []
+        bestActions = np.array([np.argmax(s) for s in qtable])
+        for x in range(20):
+            bestActGrids.append(bestActions[x::20])
+
+        assert len(bestActGrids) == 20, f"Unexpected no. best action grids {len(bestActGrids)}"
+        assert bestActGrids[0].shape[0] == 25, f"Unexpected dimension of best action grid {bestActGrids[0].shape[0]}"
+
+    # Show best action per grid position
+    # Show qvalue per grid position for each action
+    sp2 = plt.subplot(223)
+    sp3 = plt.subplot(224)
+    for a in range(qtable.shape[1]):
+        qValGrids = []
+        stateVals = qtable[:,a]
+        for x in range(20):
+            qValGrids.append(stateVals[x::20])
+            
+        assert len(qValGrids) == 20, f"Unexpected no. qValGrids {len(qValGrids)}"
+        assert qValGrids[0].shape[0] == 25, f"Unexpected dimension of action-state grid {qValGrids[0].shape[0]}"
+        for i, qvg in enumerate(qValGrids):
+            passengerLoc = stateNames[i // 4]
+            destinationLoc = stateNames[i % 4]
+
+            bag = np.array(bestActGrids[i])
+            sp2.imshow(np.ones((5, 5)), cmap="Greys")
+            sp2.text(0,4, f"Y\n")       # bottom left corner
+            sp2.text(0,0, f"R\n")       # top left corner
+            sp2.text(4,0, f"G\n")       # top right corner
+            sp2.text(3,4, f"B\n")       # 1 unit left of the bottom right corner
+            for j in range(len(bag)):
+                xj = j % 5
+                yj = j // 5
+                jj = 5 * yj + xj
+                bbox = dict(facecolor='green', alpha=0.5) if bag[jj] == a else None
+                sp2.text(xj, yj, f"{actionNames[bag[jj]]}: {qtable[jj][bag[jj]]:.2f}", fontsize=6, bbox=bbox)
+            sp2.set(xlabel=f"'{passengerLoc}' -> '{destinationLoc}'")
+            
+            qvg = np.array(qvg)
+            sp3.imshow(qvg.reshape(5, 5), cmap="hot")
+            sp3.text(0,4, f"Y\n")       # bottom left corner
+            sp3.text(0,0, f"R\n")       # top left corner
+            sp3.text(4,0, f"G\n")       # top right corner
+            sp3.text(3,4, f"B\n")       # 1 unit left of the bottom right corner
+            for j in range(len(qvg)):
+                xj = j % 5
+                yj = j // 5
+                jj = 5 * yj + xj
+                sp3.text(xj, yj, f"{round(qvg[jj],2)}", fontsize=6)
+            sp3.set(xlabel=f"'{passengerLoc}' -> '{destinationLoc}', max qval={qvg.max():.3f}")
+            
+            plt.savefig(f"{actionNames[a]}_pass{passengerLoc}_dest{destinationLoc}.png")
+            sp2.cla()
+            sp3.cla()
+           
 
 if __name__ == "__main__":
     main()
@@ -489,4 +604,4 @@ if __name__ == "__main__":
 # Some notes:
 # 
 # TIL
-#   print(f"{var}") is effectively print("{}".format(var))
+#   print(f"{var}") is effectively print("{}".format(var)) requires 3.6+
