@@ -515,10 +515,10 @@ def main():
     a3 = [x.actions[Action.MoveW] for x in allOutputs]
     a4 = [x.actions[Action.Pickup] for x in allOutputs]
     a5 = [x.actions[Action.Dropoff] for x in allOutputs]
-    plt.plot(a0, color='red', linewidth=1, label="s")
-    plt.plot(a1, color='orange', linewidth=1, label="n")
-    plt.plot(a2, color='green', linewidth=1, label="e")
-    plt.plot(a3, color='blue', linewidth=1, label="w")
+    plt.plot(a0, color='red', linewidth=0, label="s", markevery=PLOT_SAMPLE_FREQ//10)
+    plt.plot(a1, color='orange', linewidth=0, label="n", markevery=PLOT_SAMPLE_FREQ//10)
+    plt.plot(a2, color='green', linewidth=0, label="e", markevery=PLOT_SAMPLE_FREQ//10)
+    plt.plot(a3, color='blue', linewidth=0, label="w", markevery=PLOT_SAMPLE_FREQ//10)
     plt.plot(a4, color='magenta', marker='x', linewidth=0, label="pick")
     plt.plot(a5, color='magenta', marker='o', linewidth=0, label="drop")
     plt.xlabel("episode")
