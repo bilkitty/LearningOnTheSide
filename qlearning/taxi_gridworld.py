@@ -19,6 +19,7 @@ FPS = 10
 FPS_FACTOR = 30
 N_CLIP = 20
 MAX_TRAINING_EPISODES = 10000
+MAX_TRAINING_EPOCHS = 100000
 
 # Qlearning params
 LR_ALPHA = 0.1
@@ -27,11 +28,55 @@ EPSILON = 0.1
 QTABLE_FILE = "qtable.pkl"
 POLICY_FILE = "policy.pkl"
 SHOULD_RECYCLE = False 
+SHOULD_PLOT = True
 
 #
 # Tutorial
 # https://www.learndatasci.com/tutorials/reinforcement-q-learning-scratch-python-openai-gym/
 #
+
+"""
+Summary of required packages
+python3 -m pip install gym, numpy, decorator, matplotlib
+sudo apt-get install python3.6-tk
+
+Summary of key functions
+
+
+BruteForceSearch(env, maxEpisodes=100, maxEpochs=100000)
+    Performs random actions until goal state is reached.
+
+Parameters
+    env             openai gym environment object
+    maxEpisodes     max number of episodes
+    maxEpochs       max number of epochs
+Returns
+    Eval outputs    frames, epoch and penalty counts, etc.
+
+LearnPolicy(env, maxEpisodes=100, maxEpochs=10000)
+    Estimates q-values for action state pairs via q-learning algorithm.
+
+Parameters
+    env             openai gym environment object
+    maxEpisodes     max number of episodes
+    maxEpochs       max number of epochs
+Returns
+    2d array        a q-table of size m states by n actions
+    Eval outputs    frames, epoch and penalty counts, etc.
+
+ExecutePolicy(env, qTable, maxEpisodes=100, maxEpochs=100000)
+    Uses learnt q-values to exploit best actions to find goal state. 
+
+Parameters
+    env             openai gym environment object
+    qTable          a 2d table of q-values for state-action pairs
+    maxEpisodes     max number of episodes
+    maxEpochs       max number of epochs
+Returns
+    Eval outputs    frames, epoch and penalty counts, etc.
+
+"""
+
 
 """
 Learning
@@ -103,8 +148,6 @@ def BruteForceSearch(env, maxEpisodes=100, maxEpochs=100000):
         done = False
         frames = []
         while not done and epochs <= maxEpochs:
-            # Brute force approach
-            #   take random actions until goal is reached
             a = env.action_space.sample()
             s, r, done, info = env.step(a)
 
@@ -260,6 +303,17 @@ passenger at the wrong location will incur -10 reward. Also, each move incurs
 the taxi and a pickup (incorrectly) occurs, then the env only gives a time penalty.
 The agent receives reward of 20 for successfully dropping off the passenger.
 
+Action space
+    There are six total possible actions. Obviously, only one action is taken at a time: 
+    4 directions of movement + pickup + dropoff.
+    
+
+State space
+    There are 500 total possible states, including when the passenger is in the car: 
+    5x5 grid positions x (4 + 1) passenger positions x 4 destinations 
+    Really, each row is a summarization of the car's and passenger's possible position in the grid. It 
+    doesn't clearly map to a particular visual representation of the grid. Or maybe we just need to find the
+    appropriate mapping.
 
 Notes:  This reward structure seems to allow repeated pickup of the passenger
 after they are in the taxi. This sitation be an example of how an over
@@ -273,8 +327,8 @@ simplified reward signal might allow the system to waste resources, in this case
 
 class State:
     def __init__(self):
-        self.taxiX = 3
-        self.taxiY = 1
+        self.taxiY = 3
+        self.taxiX = 1
         self.pickup = 2
         self.dropoff = 0    
 
@@ -402,8 +456,7 @@ def main():
     env.reset()
 
     s = State()
-    # What exactly is this function doing?
-    env.s = env.encode(s.taxiX, s.taxiY, s.pickup, s.dropoff)
+    env.s = env.encode(s.taxiY, s.taxiX, s.pickup, s.dropoff)
 
     infoText = f"state space: {env.action_space}\n"
     infoText += f"obs space: {env.observation_space}\n"
@@ -417,12 +470,12 @@ def main():
             policy = LoadQTable(POLICY_FILE)
             print("Loaded policy")
         else:
-            policy, trainingOutput = LearnPolicy(env, MAX_TRAINING_EPISODES)
+            policy, trainingOutput = LearnPolicy(env, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
             SaveAsPickle(policy, POLICY_FILE)
             SaveAsPickle(trainingOutput, "train.pkl")
             print("Finished policy training")
 
-        allOutputs = ExecutePolicy(env, policy, 10, 100000)
+        allOutputs = ExecutePolicy(env, policy, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
         SaveAsPickle(allOutputs, "eval.pkl")
         print("Finished execution")
     else:
@@ -447,6 +500,9 @@ def main():
     # print("\tavg epochs\t\tavg penalties")
     # print(f"\t{e.mean():.2f} +/-{e.std():.2f}\t{p.mean():.2f} +/-{p.std():.2f}")
 
+    if not SHOULD_PLOT:
+        return
+
     a0 = [x.actions[Actions.MoveS] for x in allOutputs]
     a1 = [x.actions[Actions.MoveN] for x in allOutputs]
     a2 = [x.actions[Actions.MoveE] for x in allOutputs]
@@ -463,7 +519,7 @@ def main():
     plt.ylabel("action count")
     plt.legend()
     plt.savefig("episode_action_counts.png")
-    plt.show()
+    #plt.show()
 
     rewards = [x.totalReward for x in allOutputs]
     durations = [x.epochCount for x in allOutputs]
@@ -477,11 +533,26 @@ def main():
     plt.xlabel("episode")
     plt.ylabel("total epochs")
     plt.subplot(313)
-    plt.plot(penalties)
-    plt.xlabel("episode")
-    plt.ylabel("total penalties")
-    plt.savefig("episode_stats.png")
-    plt.show()
+    #plt.plot(penalties)
+    #plt.xlabel("episode")
+    #plt.ylabel("total penalties")
+    #plt.savefig("episode_stats.png")
+    #plt.show()
+
+    # show values for 20 types of states in qtable
+    for a in range(policy.shape[1]):
+        grids = []
+        states = policy[:,a]
+        states = states.reshape(500, 1)
+        for x in range(0, states.shape[0], 25):
+            y = x + 25
+            grids.append(states[x:y])
+
+        for i, g in enumerate(grids):
+            g = np.array(g)
+            assert g.shape == (25,1), f"Unexpected dimension of action-state grid: {g.shape}"
+            plt.imshow(g.reshape(5, 5), cmap="hot", interpolation="nearest")
+            plt.savefig("/home/bilkit/Workspace/pybullet/scripts/qlearning/ipython3/action{}_{}.png".format(a, i))
 
 if __name__ == "__main__":
     main()
@@ -489,4 +560,4 @@ if __name__ == "__main__":
 # Some notes:
 # 
 # TIL
-#   print(f"{var}") is effectively print("{}".format(var))
+#   print(f"{var}") is effectively print("{}".format(var)) requires 3.6+
