@@ -26,6 +26,7 @@ ENV_DICTIONARY = {
  An inverted pendulum balancing task for a pole attached to a cart that can move
  horizontally along a track. 
 """
+# TODO: need the following functions; state space size, action space size, encode state
 
 """
  Taxi grid world
