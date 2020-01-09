@@ -16,7 +16,7 @@ class EnvTypes:
 
 ENV_DICTIONARY = {
     "WindyGridWorld": lambda : WindyGridWorldEnv(),
-    "TaxiGridWorld": lambda : gym.make("Taxi-v3"),
+    "TaxiGridWorld": lambda : gym.make("Taxi-v3").env,
     "CartPole": lambda : gym.make('CartPole-v0')
 }
 

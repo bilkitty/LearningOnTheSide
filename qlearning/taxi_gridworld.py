@@ -12,6 +12,7 @@ from io import StringIO
 import sys, os
 
 from matplotlib import pyplot as plt
+from environments import ENV_DICTIONARY, EnvTypes
 
 # Rendering mode; choose from ['human', 'ansi']
 MODE = "human"
@@ -140,6 +141,7 @@ class EvaluationOutputs:
         return f"{s}\ne: {self.epochCount}\np: {self.failedPickAndDropCount}\nr: {self.totalReward}\nsuccess: {self.success}\n"
 
 def BruteForceSearch(env, maxEpisodes=100, maxEpochs=100000):
+
     evaluationResults = []
     for episode in np.arange(maxEpisodes):
         r = 0
@@ -148,6 +150,7 @@ def BruteForceSearch(env, maxEpisodes=100, maxEpochs=100000):
         epochs = 0
         done = False
         frames = []
+        env.reset()
         while not done and epochs <= maxEpochs:
             a = env.action_space.sample()
             s, r, done, info = env.step(a)
@@ -337,6 +340,9 @@ simplified reward signal might allow the system to waste resources, in this case
 #
 
 class State:
+    """
+    Used in plotting and env initialization
+    """
     posR = 0
     posG = 1
     posY = 2
@@ -358,6 +364,9 @@ class PenaltyTypes:
     WrongDropOrPick = -10
 
 class Action:
+    """
+    Used in frame rendering, plotting, and penalty checks in qlearning
+    """
     MoveS = 0
     MoveN = 1
     MoveE = 2
@@ -372,7 +381,10 @@ class Action:
                 (Action.MoveE, ">"), (Action.MoveW, "<"), 
                 (Action.Pickup, "P"), (Action.Dropoff, "D")]
 
-def RenderIPython(outputs):
+"""
+These functions should really be a part of the evaluation outputs class
+"""
+def RenderFramesIPython(outputs):
     print("\ttotal epochs\t\tpenalty rate")
 
     # temp arrays for stat computations (later)
@@ -392,7 +404,7 @@ def RenderIPython(outputs):
     print("\tavg epochs\t\tavg penalties")
     print(f"\t{e.mean():.2f} +/-{e.std():.2f}\t{p.mean():.2f} +/-{p.std():.2f}")
 
-def Render(extantDisplay, episodeOutput, close=False):
+def RenderFrames(extantDisplay, episodeOutput, close=False):
     if close:
         return 
 
@@ -477,7 +489,7 @@ def SaveAsPickle(contents, filename):
     f.close()
 
 def main():
-    env = gym.make("Taxi-v3").env
+    env = ENV_DICTIONARY[EnvTypes.TaxiGridEnv]().env #gym.make("Taxi-v3").env
     env.reset()
 
     s = State()
@@ -523,12 +535,12 @@ def main():
     a3 = [x.actions[Action.MoveW] for x in allOutputs]
     a4 = [x.actions[Action.Pickup] for x in allOutputs]
     a5 = [x.actions[Action.Dropoff] for x in allOutputs]
-    plt.plot(a0, color='red', linewidth=0, label="s", markevery=PLOT_SAMPLE_FREQ//10)
-    plt.plot(a1, color='orange', linewidth=0, label="n", markevery=PLOT_SAMPLE_FREQ//10)
-    plt.plot(a2, color='green', linewidth=0, label="e", markevery=PLOT_SAMPLE_FREQ//10)
-    plt.plot(a3, color='blue', linewidth=0, label="w", markevery=PLOT_SAMPLE_FREQ//10)
-    plt.plot(a4, color='magenta', marker='x', linewidth=0, label="pick")
-    plt.plot(a5, color='magenta', marker='o', linewidth=0, label="drop")
+    plt.plot(a0, color='red', marker='o', markersize=2, linewidth=0, label="s", markevery=PLOT_SAMPLE_FREQ//10)
+    plt.plot(a1, color='green', marker='o', markersize=2, linewidth=0, label="n", markevery=PLOT_SAMPLE_FREQ//10 + 5)
+    plt.plot(a2, color='blue', marker='o', markersize=2, linewidth=0, label="e", markevery=PLOT_SAMPLE_FREQ//10 + 15)
+    plt.plot(a3, color='orange', marker='o', markersize=2, linewidth=0, label="w", markevery=PLOT_SAMPLE_FREQ//10 + 25)
+    plt.plot(a4, color='magenta', marker='x', markersize=2, linewidth=0, label="pick", markevery=PLOT_SAMPLE_FREQ//10 + 35)
+    plt.plot(a5, color='cyan', marker='d', markersize=2, linewidth=0, label="drop", markevery=PLOT_SAMPLE_FREQ//10 + 45)
     plt.xlabel("episode")
     plt.ylabel("action count")
     plt.legend()
