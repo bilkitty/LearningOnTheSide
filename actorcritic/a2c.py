@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+
 class ActorCritic(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_size, learning_rate=3e-4):
         super(ActorCritic, self).__init__()
@@ -19,7 +20,7 @@ class ActorCritic(nn.Module):
         value = F.relu(self.critic_linear1(state))
         value = self.critic_linear2(value)
         
-        policy_dist = F.relu(self.actor_linear1(state))
-        policy_dist = F.softmax(self.actor_linear2(policy_dist), dim=1)
+        policyDistro = F.relu(self.actor_linear1(state))
+        policyDistro = F.softmax(self.actor_linear2(policyDistro), dim=1)
 
-        return value, policy_dist
+        return value, policyDistro

@@ -9,6 +9,11 @@ from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
 GAMMA = 0.9         # We care about long term rewards
+ALPHA = 0.1
+EPSILON = 0.1
+MAX_NUM_EPISODES = 1000
+MAX_STEPS = 10000
+SHOULD_RENDER = False
 
 """
 Summary of required packages: 
@@ -36,15 +41,14 @@ class PolicyNetwork(nn.Module):
         self.num_actions = num_actions
         self.linear1 = nn.Linear(num_inputs, hidden_size)
         self.linear2 = nn.Linear(hidden_size, num_actions)
-        # TODO: remember why adam is good - well, most expers
         self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
 
     # The structure of the network is here
     def forward(self, state):
         x = F.relu(self.linear1(state))
         # We use softmax at the last layer in order to output probabilities (regress)
-        x = F.softmax(self.linear2(x), dim=1)
-        return x
+        actionProbs = F.softmax(self.linear2(x), dim=1)
+        return actionProbs
 
     def get_action(self, state):
         state = torch.from_numpy(state).float().unsqueeze(0)
@@ -71,6 +75,8 @@ def update_policy(policy_network, rewards, log_probs):
     # Normalize discounted rewards: center and confine to some range, in this case the mean
     # Q: why use std instead of max or some other finite measure? Rewards outside of std will
     #    have value 1+ or 1-
+    # The main purpose of doing this normalization is to avoid unstable/noisy gradients. The
+    # subtraction of the mean is the primary action that mitigates high variance in grads.
     discounted_rewards = torch.tensor(discounted_rewards)
     discounted_rewards = (discounted_rewards - discounted_rewards.mean()) / (
                 discounted_rewards.std() + 1e-9)
@@ -89,19 +95,19 @@ def main():
     env = gym.make('CartPole-v0')
     policy_net = PolicyNetwork(env.observation_space.shape[0], env.action_space.n, 128)
 
-    max_episode_num = 5000
-    max_steps = 10000
     numsteps = []
     avg_numsteps = []
     all_rewards = []
 
-    for episode in range(max_episode_num):
+    for episode in range(MAX_NUM_EPISODES):
         state = env.reset()
         log_probs = []
         rewards = []
 
-        for steps in range(max_steps):
-            env.render()
+        for steps in range(MAX_STEPS):
+            if SHOULD_RENDER:
+                env.render()
+
             action, log_prob = policy_net.get_action(state)
             new_state, reward, done, _ = env.step(action)
             log_probs.append(log_prob)
@@ -124,7 +130,8 @@ def main():
 
     plt.plot(numsteps)
     plt.plot(avg_numsteps)
-    plt.xlabel('Episode')
+    plt.xlabel("Episode")
+    plt.ylabel("Time steps")
     plt.show()
 
 if __name__ == "__main__":

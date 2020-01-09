@@ -16,6 +16,11 @@ GAMMA = 0.99
 NUM_STEPS = 300
 MAX_EPISODES = 3000
 
+"""
+Summary of required packages: 
+python3 -m pip install torch
+"""
+
 def a2c(env):
     num_inputs = env.observation_space.shape[0]
     num_outputs = env.action_space.n
