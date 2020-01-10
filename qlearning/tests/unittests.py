@@ -4,7 +4,7 @@ from qlearning import *
 from environments import EnvTypes, ENV_DICTIONARY
 
 TEST_QTABLE_PKL = "data/test.pkl"
-VERBOSE = False
+VERBOSE = True
 qtable = utils.LoadFromPickle(TEST_QTABLE_PKL)
 
 
@@ -23,19 +23,23 @@ class TestQlearningSteps(unittest.TestCase):
 
     def SingleTrainCycle(self, env):
         qla = QLearningAgent()
-        qla.SetParameters(maxEpisodes=1, maxEpochs=1)
+        qla.SetParameters(maxEpisodes=1, maxEpochs=10000)
         results, time = qla.Train(env, lambda x: x + 1, verbose=VERBOSE)
         self.assertEqual(len(results), 1)
         for i, res in enumerate(results):
             self.assertNotEqual(res, None, msg=f"result {i} is 'None'")
 
+        env.close()
+
     def SingleTestCycle(self, env):
         qla = QLearningAgent()
-        qla.SetParameters(maxEpisodes=1, maxEpochs=1)
-        results, time = qla.Evaluate(env, qtable)
+        qla.SetParameters(maxEpisodes=1, maxEpochs=10000)
+        results, time = qla.Evaluate(env, qtable, verbose=VERBOSE)
         self.assertEqual(len(results), 1)
         for i, res in enumerate(results):
             self.assertNotEqual(res, None, msg=f"result {i} is 'None'")
+
+        env.close()
 
     def test_SingleTrainCycleOnWindy(self):
         self.SingleTrainCycle(ENV_DICTIONARY[EnvTypes.WindyGridEnv]())

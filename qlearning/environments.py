@@ -6,6 +6,11 @@ import numpy as np
 from time import sleep
 from gym.envs.toy_text import discrete
 
+if sys.version_info[0] == '2':
+    from StringIO import StringIO
+else:
+    from io import StringIO
+
 """
  Environment generator
 """
@@ -107,9 +112,8 @@ class WindyGridWorldEnv(discrete.DiscreteEnv):
         isd[np.ravel_multi_index(self.startPos, self.shape)] = 1.0
 
         discrete.DiscreteEnv.__init__(self, nS, nA, P, isd)
-        #super(WindyGridWorldEnv, self).__init__(nS, nA, P, isd)
 
-    def render(self, heading, mode='human', close=False):
+    def render(self, heading="", mode='human', close=False):
         self._render(heading, mode, close)
 
     def _limit_coordinates(self, coord):
@@ -156,4 +160,5 @@ class WindyGridWorldEnv(discrete.DiscreteEnv):
             outfile.write(output)
         outfile.write("\n")
 
-        sleep(0.1)
+        if mode != 'ansi':
+            sleep(0.1)

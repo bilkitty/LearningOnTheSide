@@ -45,17 +45,20 @@ def main():
             print("Loaded policy")
         else:
             resultsTrain, globalRuntime = agent.Train(env, policy)
-            qtable = agent.QValues()
-            SaveAsPickle(qtable, QTABLE_FILE)
+            qTable = agent.QValues()
+            SaveAsPickle(qTable, QTABLE_FILE)
             SaveAsPickle(resultsTrain, "train.pkl")
             print(f"Finished training: {globalRuntime: .4f}s")
 
-        resultsTest, globalRuntime = agent.Evaluate(env, policy)
+        resultsTest, globalRuntime = agent.Evaluate(env)
         SaveAsPickle(resultsTest, "eval.pkl")
         print(f"Finished evaluation: {globalRuntime: .4f}s")
     else:
         print(f"Unsupported algo type {ALGO_TYPE}")
         return
+
+    # Good practice to close env when finished :)
+    env.close()
 
 
 if __name__ == "__main__":
