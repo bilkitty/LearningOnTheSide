@@ -5,6 +5,7 @@ from qlearning import QLearningAgent
 from environments import EnvTypes, ENV_DICTIONARY
 
 QTABLE_FILE = "qtable.pkl"
+SHOULD_REUSE_QTABLE = False
 
 # TODO: python args or consider adding parameter file (prefer latter)
 ALGO_TYPE = "qlearning"
@@ -15,6 +16,11 @@ DISCOUNT_RATE = 0.6
 EPSILON = 0.1
 
 def main():
+    """
+    Currently does not support cartpole environment because the state is used as an index
+    into array. Need to use different data structure that'll support different state reps,
+    but also be friendly for visualization.
+    """
     env = ENV_DICTIONARY[EnvTypes.TaxiGridEnv]()
     agent = QLearningAgent()
     policy = agent.CreatePolicy()
@@ -34,18 +40,18 @@ def main():
     elif (ALGO_TYPE.lower() == "qlearning"):
         print("Q-learning it")
         # load qtable if available
-        if (os.path.exists(QTABLE_FILE)):
+        if (SHOULD_REUSE_QTABLE and os.path.exists(QTABLE_FILE)):
             qtable = LoadFromPickle(QTABLE_FILE)
             print("Loaded policy")
         else:
-            globalRuntime, resultsTrain = agent.Train(env, policy)
+            resultsTrain, globalRuntime = agent.Train(env, policy)
             qtable = agent.QValues()
             SaveAsPickle(qtable, QTABLE_FILE)
             SaveAsPickle(resultsTrain, "train.pkl")
             print(f"Finished training: {globalRuntime: .4f}s")
 
         assert qtable is not None, "No qtable available"
-        globalRuntime, resultsTest = agent.Evaluate(env, policy)
+        resultsTest, globalRuntime = agent.Evaluate(env, policy)
         SaveAsPickle(resultsTest, "eval.pkl")
         print(f"Finished evaluation: {globalRuntime: .4f}s")
     else:

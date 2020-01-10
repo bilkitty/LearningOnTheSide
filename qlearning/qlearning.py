@@ -108,7 +108,7 @@ class QLearningAgent:
         """
         print("evaluate")
         assert self.qTable is not None
-        return False, QLearningAgent.Metrics([], 0, 0.0, 0.0, False)
+        return QLearningAgent.Metrics([], 0, 0.0, 0.0, False), 0.0
 
     def CreatePolicy(self):
         """
