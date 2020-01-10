@@ -50,7 +50,6 @@ def main():
             SaveAsPickle(resultsTrain, "train.pkl")
             print(f"Finished training: {globalRuntime: .4f}s")
 
-        assert qtable is not None, "No qtable available"
         resultsTest, globalRuntime = agent.Evaluate(env, policy)
         SaveAsPickle(resultsTest, "eval.pkl")
         print(f"Finished evaluation: {globalRuntime: .4f}s")
