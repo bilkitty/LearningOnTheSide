@@ -1,8 +1,14 @@
 import numpy as np
 import random
+from collections import defaultdict
 from utils import RefreshScreen
 from timeit import default_timer as timer
 
+DEFAULT_ALPHA = 1
+DEFAULT_EPSILON = 1
+DEFAULT_GAMMA = 1
+DEFAULT_MAX_EPOCHS = 100000
+DEFAULT_MAX_EPISODES = 100000
 
 class QLearningAgent:
 
@@ -32,11 +38,11 @@ class QLearningAgent:
         return:
             n/a
         """
-        self.epsilon = 1
-        self.gamma = 1
-        self.alpha = 1
-        self.maxEpisodes = 100000
-        self.maxEpochs = 100000
+        self.epsilon = DEFAULT_EPSILON
+        self.gamma = DEFAULT_GAMMA
+        self.alpha = DEFAULT_ALPHA
+        self.maxEpisodes = DEFAULT_MAX_EPISODES
+        self.maxEpochs = DEFAULT_MAX_EPOCHS
 
         self.qTable = None
         return
@@ -50,13 +56,10 @@ class QLearningAgent:
             Metrics  performance results like timesteps, rewards, penalties, etc. per episode
             float    global training runtime
         """
-        # Use shape to determine state space size because the type may vary
-        sizeStateSpace = env.observation_space.n if isinstance(env.observation_space, type(env.action_space)) \
-            else env.observation_space.shape[0]
-        sizeActionSpace = env.action_space.n
-        self.qTable = np.zeros([sizeStateSpace, env.action_space.n])
+        # Any newly seen state will be assigned q-values of zero for all states
+        self.qTable = defaultdict(lambda: np.zeros(env.action_space.n))
 
-        textinfo = f"Training in progress..."
+        heading = f"In progress..."
 
         episodicMetrics = []
         globalStart = timer()
@@ -65,6 +68,7 @@ class QLearningAgent:
             frames = []
             done = False
             s = env.reset()
+            if isinstance(s, np.ndarray): s = tuple(s)
 
             start = timer()
             actionCounts = np.zeros(env.action_space.n)
@@ -74,19 +78,21 @@ class QLearningAgent:
                 else:
                     a = np.argmax(self.qTable[s])  # Get maximizing parameter
 
-                q = self.qTable[s, a]
+                q = self.qTable[s][a]
 
                 nextState, r, done, info = env.step(a)
+                if isinstance(nextState, np.ndarray): nextState = tuple(nextState)
+
                 nextHighestQ = np.max(self.qTable[nextState])  # Get maximal value
 
                 # Update state and qtable
-                self.qTable[s, a] = (1 - self.alpha) * q + self.alpha * (r + self.gamma * nextHighestQ)
+                self.qTable[s][a] = (1 - self.alpha) * q + self.alpha * (r + self.gamma * nextHighestQ)
                 s = nextState
 
                 actionCounts[a] += 1
                 if verbose and epochs % (self.maxEpochs / 2) == 0:
                     RefreshScreen(mode="human")
-                    print(f"{textinfo} \nTraining\ne={i}\nr={r}\nq={self.qTable[s, a]: .2f}")
+                    print(f"{heading} \nTraining\ne={i}\nr={r}\nq={self.qTable[s][a]: .2f}")
                     totalCount = actionCounts.sum()
                     for b, cnt in enumerate(actionCounts): print(f"a{b}  {cnt / totalCount: .4f}")
                 epochs += 1
@@ -121,7 +127,12 @@ class QLearningAgent:
         print("policy creation")
         return lambda x: x + 1
 
-    def SetParameters(self, epsilon, gamma, alpha, maxEpisodes, maxEpochs):
+    def SetParameters(self,
+                      epsilon=DEFAULT_EPSILON,
+                      gamma=DEFAULT_GAMMA,
+                      alpha=DEFAULT_ALPHA,
+                      maxEpisodes=DEFAULT_MAX_EPISODES,
+                      maxEpochs=DEFAULT_MAX_EPOCHS):
         """
         inputs:
             float   epsilon       probability of random action selection

@@ -4,8 +4,8 @@ from qlearning import *
 from environments import EnvTypes, ENV_DICTIONARY
 
 TEST_QTABLE_PKL = "test.pkl"
-# TODO: no idea why these are not running... followed doc almost exactly
-# You have to prefix each method with "test_"
+VERBOSE = False
+
 
 class TestEnvironmentCreation(unittest.TestCase):
     def test_CreateWindyGrid(self):
@@ -19,10 +19,23 @@ class TestEnvironmentCreation(unittest.TestCase):
 
 
 class TestQlearningSteps(unittest.TestCase):
-    def test_SingleTrainCycle(self):
-        # check results are available
-        # check success
-        self.assertTrue(False)
+
+    def SingleTrainCycle(self, env):
+        qla = QLearningAgent()
+        qla.SetParameters(maxEpisodes=1, maxEpochs=1)
+        results, time = qla.Train(env, lambda x: x + 1, verbose=VERBOSE)
+        self.assertEqual(len(results), 1)
+        for i, res in enumerate(results):
+            self.assertNotEqual(res, None, msg=f"result {i} is 'None'")
+
+    def test_SingleTrainCycleOnWindy(self):
+        self.SingleTrainCycle(ENV_DICTIONARY[EnvTypes.WindyGridEnv]())
+
+    def test_SingleTrainCycleOnTaxi(self):
+        self.SingleTrainCycle(ENV_DICTIONARY[EnvTypes.TaxiGridEnv]())
+
+    def test_SingleTrainCycleOnCartPole(self):
+        self.SingleTrainCycle(ENV_DICTIONARY[EnvTypes.CartPoleEnv]())
 
     def test_SingleEvaluationCycle(self):
         # load qtable
