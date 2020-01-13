@@ -2,10 +2,12 @@ import unittest
 import utils
 from qlearning import *
 from environments import EnvTypes, ENV_DICTIONARY
+from collections import defaultdict
 
-TEST_QTABLE_PKL = "data/test.pkl"
+TEST_QTABLE_PKL = "/home/bilkit/Workspace/SideProjs/qlearning/tests/data/test.pkl"
 VERBOSE = True
-qtable = utils.LoadFromPickle(TEST_QTABLE_PKL)
+qTable = utils.LoadFromPickle(TEST_QTABLE_PKL)
+I_TIMEOUT=100
 
 
 class TestEnvironmentCreation(unittest.TestCase):
@@ -34,7 +36,7 @@ class TestQlearningSteps(unittest.TestCase):
     def SingleTestCycle(self, env):
         qla = QLearningAgent()
         qla.SetParameters(maxEpisodes=1, maxEpochs=10000)
-        results, time = qla.Evaluate(env, qtable, verbose=VERBOSE)
+        results, time = qla.Evaluate(env, qTable, verbose=VERBOSE)
         self.assertEqual(len(results), 1)
         for i, res in enumerate(results):
             self.assertNotEqual(res, None, msg=f"result {i} is 'None'")
@@ -58,6 +60,32 @@ class TestQlearningSteps(unittest.TestCase):
 
     def test_SingleEvaluationCycleOnCartPole(self):
         self.SingleTestCycle(ENV_DICTIONARY[EnvTypes.CartPoleEnv]())
+
+    def test_CreatePolicyFunction(self):
+        # Setup mock q-table
+        abest = 0
+        state = "s0"
+        mockqtable = defaultdict(lambda: np.zeros(3))
+        mockqtable[state][abest] = 1
+
+        # Setup agent that never explores
+        qla = QLearningAgent()
+        qla.SetParameters(epsilon=0, maxEpisodes=1, maxEpochs=1)
+        purelyExploitPolicy = qla.CreatePolicyFunction(mockqtable)
+        a = purelyExploitPolicy(state)
+        self.assertEqual(a, abest)
+
+        # Setup agent that never exploits
+        qla.SetParameters(epsilon=1, maxEpisodes=1, maxEpochs=1)
+        purelyExplorePolicy = qla.CreatePolicyFunction(mockqtable)
+        a = purelyExplorePolicy(state)
+        # betting that best action isn't chosen multiple in a row?
+        for i in np.arange(I_TIMEOUT):
+            a = purelyExplorePolicy(state)
+            if a != abest or I_TIMEOUT < i:
+                break
+
+        self.assertNotEqual(a, abest)
 
 
 if __name__ == "__main__":

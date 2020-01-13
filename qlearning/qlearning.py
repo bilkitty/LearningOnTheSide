@@ -75,10 +75,7 @@ class QLearningAgent:
             start = timer()
             actionCounts = np.zeros(env.action_space.n)
             while not done and epochs < self.maxEpochs:
-                if random.uniform(0, 1) < self.epsilon:
-                    a = env.action_space.sample()
-                else:
-                    a = np.argmax(self.qTable[s])  # Get maximizing parameter
+                a = policy(s)
 
                 q = self.qTable[s][a]
 
@@ -171,16 +168,25 @@ class QLearningAgent:
 
         return episodicMetrics, timer() - globalStart
 
-    def CreatePolicy(self):
+    def CreatePolicyFunction(self, qTable=None):
         """
         inputs:
-            obj     state         current state representation
-            float   epsilon       probability of choosing random vs best action
+            dict   qTable        an LUT of action-values per state
         return:
             func    function that generates action based on state
         """
-        print("policy creation")
-        return lambda x: x + 1
+        def EpsilonGreedyPolicy(s):
+            assert(self.qTable is not None or qTable is not None)
+            actions = self.qTable[s] if qTable is None else qTable[s]
+
+            if random.uniform(0, 1) < self.epsilon:
+                a = np.random.choice(actions)
+            else:
+                a = np.argmax(actions)
+
+            return a
+
+        return EpsilonGreedyPolicy
 
     def SetParameters(self,
                       epsilon=DEFAULT_EPSILON,
