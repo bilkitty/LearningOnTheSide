@@ -8,6 +8,7 @@ from collections import defaultdict
 VERBOSE = True
 I_TIMEOUT=100
 TEST_QTABLE_PKL = os.path.join(utils.GetScriptPath(), "data/test.pkl")
+#TEST_QTABLE_PKL = "data/test.pkl"
 QTABLE = utils.LoadFromPickle(TEST_QTABLE_PKL)
 
 
@@ -21,13 +22,20 @@ class TestEnvironmentCreation(unittest.TestCase):
     def test_CreateCartPole(self):
         self.assertNotEqual(ENV_DICTIONARY[EnvTypes.CartPoleEnv](), None)
 
+    def test_CreateAcroBot(self):
+        self.assertNotEqual(ENV_DICTIONARY[EnvTypes.AcroBotEnv](), None)
+
+    def test_CreateMountainCar(self):
+        self.assertNotEqual(ENV_DICTIONARY[EnvTypes.MountainCarEnv](), None)
+
 
 class TestQlearningSteps(unittest.TestCase):
 
     def SingleTrainCycle(self, env):
         qla = QLearningAgent()
         qla.SetParameters(maxEpisodes=1, maxEpochs=10000)
-        results, time = qla.Train(env, lambda x: x + 1, verbose=VERBOSE)
+        policy = qla.CreatePolicyFunction()
+        results, time = qla.Train(env, policy, verbose=VERBOSE)
         self.assertEqual(len(results), 1)
         for i, res in enumerate(results):
             self.assertNotEqual(res, None, msg=f"result {i} is 'None'")
@@ -53,6 +61,12 @@ class TestQlearningSteps(unittest.TestCase):
     def test_SingleTrainCycleOnCartPole(self):
         self.SingleTrainCycle(ENV_DICTIONARY[EnvTypes.CartPoleEnv]())
 
+    def test_SingleTrainCycleOnAcroBot(self):
+        self.SingleTrainCycle(ENV_DICTIONARY[EnvTypes.AcroBotEnv]())
+
+    def test_SingleTrainCycleOnMountainCar(self):
+        self.SingleTrainCycle(ENV_DICTIONARY[EnvTypes.MountainCarEnv]())
+
     def test_SingleEvaluationCycleOnWindy(self):
         self.SingleTestCycle(ENV_DICTIONARY[EnvTypes.WindyGridEnv]())
 
@@ -61,6 +75,12 @@ class TestQlearningSteps(unittest.TestCase):
 
     def test_SingleEvaluationCycleOnCartPole(self):
         self.SingleTestCycle(ENV_DICTIONARY[EnvTypes.CartPoleEnv]())
+
+    def test_SingleEvaluationCycleOnAcroBot(self):
+        self.SingleTestCycle(ENV_DICTIONARY[EnvTypes.AcroBotEnv]())
+
+    def test_SingleEvaluationCycleOnMountainCar(self):
+        self.SingleTestCycle(ENV_DICTIONARY[EnvTypes.MountainCarEnv]())
 
     def test_CreatePolicyFunction(self):
         # Setup mock q-table

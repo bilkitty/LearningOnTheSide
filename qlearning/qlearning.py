@@ -1,15 +1,16 @@
 import numpy as np
 import random
 from collections import defaultdict
-from utils import RefreshScreen
 from timeit import default_timer as timer
+from matplotlib import pyplot as plt
+from utils import RefreshScreen
 
 DEFAULT_ALPHA = 1
 DEFAULT_EPSILON = 1
 DEFAULT_GAMMA = 1
 DEFAULT_MAX_EPOCHS = float("inf")
 DEFAULT_MAX_EPISODES = 100000
-RENDERING_MODE="ansi"
+RENDERING_MODE="human"
 
 class QLearningAgent:
 
@@ -51,9 +52,9 @@ class QLearningAgent:
     def Train(self, env, policy, verbose=False):
         """
         inputs:
-            env     obj           openai gym environment
-            policy  func          a function that selects env actions in some way
-            verbose bool          (optional) enables console output when True
+            env      obj           openai gym environment
+            policy   func          a function that selects env actions in some way
+            verbose  bool          (optional) enables console output when True
         return:
             Metrics  performance results like timesteps, rewards, penalties, etc. per episode
             float    global training runtime
@@ -65,56 +66,60 @@ class QLearningAgent:
 
         episodicMetrics = []
         globalStart = timer()
-        for i in range(1, self.maxEpisodes + 1):
-            epochs = totalReward = 0
-            frames = []
-            done = False
-            s = env.reset()
-            if isinstance(s, np.ndarray): s = tuple(s)
+        try:
+            for i in range(1, self.maxEpisodes + 1):
+                epochs = totalReward = 0
+                frames = []
+                done = False
+                s = env.reset()
+                if isinstance(s, np.ndarray): s = tuple(s)
 
-            start = timer()
-            actionCounts = np.zeros(env.action_space.n)
-            while not done and epochs < self.maxEpochs:
-                a = policy(s)
+                start = timer()
+                actionCounts = np.zeros(env.action_space.n)
+                while not done and epochs < self.maxEpochs:
+                    a = policy(s)
 
-                q = self.qTable[s][a]
+                    q = self.qTable[s][a]
 
-                nextState, r, done, info = env.step(a)
-                if isinstance(nextState, np.ndarray): nextState = tuple(nextState)
+                    nextState, r, done, info = env.step(a)
+                    if isinstance(nextState, np.ndarray): nextState = tuple(nextState)
 
-                # Update state and q-value
-                nextHighestQ = np.max(self.qTable[nextState])
-                self.qTable[s][a] = (1 - self.alpha) * q + self.alpha * (r + self.gamma * nextHighestQ)
-                s = nextState
+                    # Update state and q-value
+                    nextHighestQ = np.max(self.qTable[nextState])
+                    self.qTable[s][a] = (1 - self.alpha) * q + self.alpha * (r + self.gamma * nextHighestQ)
+                    s = nextState
 
-                actionCounts[a] += 1
-                if verbose and epochs % (self.maxEpochs / 2) == 0:
-                    RefreshScreen(mode=RENDERING_MODE)
-                    print(f"{heading} \nTraining\ne={i}\nr={r}\nq={self.qTable[s][a]: .2f}")
-                    totalCount = actionCounts.sum()
-                    for b, cnt in enumerate(actionCounts): print(f"a{b}  {cnt / totalCount: .4f}")
+                    actionCounts[a] += 1
+                    if verbose and epochs % (self.maxEpochs / 2) == 0:
+                        RefreshScreen(mode=RENDERING_MODE)
+                        print(f"{heading} \nTraining\ne={i}\nr={r}\nq={self.qTable[s][a]: .2f}")
+                        totalCount = actionCounts.sum()
+                        for b, cnt in enumerate(actionCounts): print(f"a{b}  {cnt / totalCount: .4f}")
 
-                    # yeh, yeh, skipped the first state
-                    frames.append({
-                        'frame': env.render(mode=RENDERING_MODE),
-                        'state': s,
-                        'action': a,
-                        'reward': r})
+                        # yeh, yeh, skipped the first state
+                        frames.append({
+                            'frame': env.render(mode=RENDERING_MODE),
+                            'state': s,
+                            'action': a,
+                            'reward': r})
 
-                epochs += 1
+                    epochs += 1
 
-            metrics = QLearningAgent.Metrics(frames, epochs, timer() - start, totalReward, done)
-            metrics.SetActionCounts(actionCounts)
-            episodicMetrics.append(metrics)
+                metrics = QLearningAgent.Metrics(frames, epochs, timer() - start, totalReward, done)
+                metrics.SetActionCounts(actionCounts)
+                episodicMetrics.append(metrics)
+
+        except MemoryError:
+            env.close()
 
         return episodicMetrics, timer() - globalStart
 
     def Evaluate(self, env, qTable=None, verbose=False):
         """
         inputs:
-            env     obj           openai gym environment
-            qTable  dict          (optional) an LUT for best actions for every state
-            verbose bool          (optional) enables console output when True
+            env      obj           openai gym environment
+            qTable   dict          (optional) an LUT for best actions for every state
+            verbose  bool          (optional) enables console output when True
         return:
             Metrics  performance results like timesteps, rewards, penalties, etc. per episode
             float    global test runtime
@@ -130,48 +135,52 @@ class QLearningAgent:
         heading = f"In progress..."
         episodicMetrics = []
         globalStart = timer()
-        for i in range(1, self.maxEpisodes + 1):
-            epochs = totalReward = 0
-            frames = []
-            done = False
-            s = env.reset()
-            if isinstance(s, np.ndarray): s = tuple(s)
-
-            start = timer()
-            actionCounts = np.zeros(env.action_space.n)
-            while not done and epochs < self.maxEpochs:
-                # Always exploit
-                a = np.argmax(qTable[s])
-
-                s, r, done, info = env.step(a)
+        try:
+            for i in range(1, self.maxEpisodes + 1):
+                epochs = totalReward = 0
+                frames = []
+                done = False
+                s = env.reset()
                 if isinstance(s, np.ndarray): s = tuple(s)
 
-                actionCounts[a] += 1
-                if verbose and epochs % (self.maxEpochs / 2) == 0:
-                    RefreshScreen(mode=RENDERING_MODE)
-                    print(f"{heading} \nTesting\ne={i}\nr={r}\nq={qTable[s][a]: .2f}")
-                    totalCount = actionCounts.sum()
-                    for b, cnt in enumerate(actionCounts): print(f"a{b}  {cnt / totalCount: .4f}")
+                start = timer()
+                actionCounts = np.zeros(env.action_space.n)
+                while not done and epochs < self.maxEpochs:
+                    # Always exploit
+                    a = np.argmax(qTable[s])
 
-                    # yeh, yeh, skipped the first state
-                    frames.append({
-                        'frame': env.render(mode=RENDERING_MODE),
-                        'state': s,
-                        'action': a,
-                        'reward': r})
+                    s, r, done, info = env.step(a)
+                    if isinstance(s, np.ndarray): s = tuple(s)
 
-                epochs += 1
+                    actionCounts[a] += 1
+                    if verbose and epochs % (self.maxEpochs / 2) == 0:
+                        RefreshScreen(mode=RENDERING_MODE)
+                        print(f"{heading} \nTesting\ne={i}\nr={r}\nq={qTable[s][a]: .2f}")
+                        totalCount = actionCounts.sum()
+                        for b, cnt in enumerate(actionCounts): print(f"a{b}  {cnt / totalCount: .4f}")
 
-            metrics = QLearningAgent.Metrics(frames, epochs, timer() - start, totalReward, done)
-            metrics.SetActionCounts(actionCounts)
-            episodicMetrics.append(metrics)
+                        # yeh, yeh, skipped the first state
+                        frames.append({
+                            'frame': env.render(mode=RENDERING_MODE),
+                            'state': s,
+                            'action': a,
+                            'reward': r})
+
+                    epochs += 1
+
+                metrics = QLearningAgent.Metrics(frames, epochs, timer() - start, totalReward, done)
+                metrics.SetActionCounts(actionCounts)
+                episodicMetrics.append(metrics)
+
+        except MemoryError:
+            env.close()
 
         return episodicMetrics, timer() - globalStart
 
     def CreatePolicyFunction(self, qTable=None):
         """
         inputs:
-            dict   qTable        an LUT of action-values per state
+            dict    qTable        an LUT of action-values per state
         return:
             func    function that generates action based on state
         """
@@ -180,7 +189,7 @@ class QLearningAgent:
             actions = self.qTable[s] if qTable is None else qTable[s]
 
             if random.uniform(0, 1) < self.epsilon:
-                a = np.random.choice(actions)
+                a = np.random.choice(np.arange(len(actions)))
             else:
                 a = np.argmax(actions)
 
@@ -221,5 +230,11 @@ class QLearningAgent:
         assert self.qTable is not None
         return dict(self.qTable)
 
-
+    def PlotQValuesForEnv(self):
+        """
+        inputs:
+            envType ?
+        return:
+            obj     figure containing plots of q-values for particular states
+        """
 
