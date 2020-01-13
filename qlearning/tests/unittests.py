@@ -1,13 +1,14 @@
 import unittest
 import utils
+import os
 from qlearning import *
 from environments import EnvTypes, ENV_DICTIONARY
 from collections import defaultdict
 
-TEST_QTABLE_PKL = "/home/bilkit/Workspace/SideProjs/qlearning/tests/data/test.pkl"
 VERBOSE = True
-qTable = utils.LoadFromPickle(TEST_QTABLE_PKL)
 I_TIMEOUT=100
+TEST_QTABLE_PKL = os.path.join(utils.GetScriptPath(), "data/test.pkl")
+QTABLE = utils.LoadFromPickle(TEST_QTABLE_PKL)
 
 
 class TestEnvironmentCreation(unittest.TestCase):
@@ -36,7 +37,7 @@ class TestQlearningSteps(unittest.TestCase):
     def SingleTestCycle(self, env):
         qla = QLearningAgent()
         qla.SetParameters(maxEpisodes=1, maxEpochs=10000)
-        results, time = qla.Evaluate(env, qTable, verbose=VERBOSE)
+        results, time = qla.Evaluate(env, QTABLE, verbose=VERBOSE)
         self.assertEqual(len(results), 1)
         for i, res in enumerate(results):
             self.assertNotEqual(res, None, msg=f"result {i} is 'None'")
