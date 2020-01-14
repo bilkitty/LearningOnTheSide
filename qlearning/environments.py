@@ -11,9 +11,17 @@ if sys.version_info[0] == '2':
 else:
     from io import StringIO
 
+RENDERING_MODE = "human"
+
+
 """
  Environment generator
+ 
+ Sigh, unsure about whether it's better to use inheritance or composition. Seems like composition will require
+ bunches of maintenance as new env are added. On the other hand, there's far more interface control.
 """
+
+
 class EnvTypes:
     WindyGridEnv = "WindyGridWorld"
     TaxiGridEnv = "TaxiGridWorld"
@@ -21,24 +29,120 @@ class EnvTypes:
     AcroBotEnv = "Acrobot"
     MountainCarEnv = "MountainCar"
 
+
 ENV_DICTIONARY = {
-    "WindyGridWorld": lambda : WindyGridWorldEnv(),
-    "TaxiGridWorld": lambda : gym.make("Taxi-v3").env,
-    "CartPole": lambda : gym.make("CartPole-v1"),
-    "Acrobot": lambda: gym.make("Acrobot-v1"),
-    "MountainCar": lambda: gym.make("MountainCar-v0")
+    "WindyGridWorld": lambda : WindyGridEnvWrapper(RENDERING_MODE),
+    "TaxiGridWorld": lambda : TaxiGridEnvWrapper(RENDERING_MODE),
+    "CartPole": lambda : CartPoleEnvWrapper(RENDERING_MODE),
+    "Acrobot": lambda: AcrobotEnvWrapper(RENDERING_MODE),
+    "MountainCar": lambda: MountainCarEnvWrapper(RENDERING_MODE)
 }
+
+
+class GymEnvWrapper:
+
+    def __init__(self, gymEnv, renderingMode):
+        self.env = gymEnv
+        self.renderingMode = renderingMode
+
+    def ActionSpaceN(self):
+        return self.env.action_space.n
+
+    def ObservationSpaceN(self):
+        return self.env.observation_space.n
+
+    def Render(self):
+        self.env.render(self.renderingMode)
+
+    def Reset(self):
+        self.env.reset()
+
+    def Step(self, action):
+        return self.env.step(action)
+
+    def Close(self):
+        self.env.close()
+
+    def ActionSpaceLabels(self, shouldUseShorthand=False):
+        raise NotImplementedError
+
+
+"""
+ Mountain car 
+ https://github.com/openai/gym/blob/master/gym/envs/classic_control/mountain_car.py
+ https://perma.cc/6Z2N-PFWC (sutton's code from '00)
+ 
+ Action Space
+    Discrete actions 0) move left, 1) stop, 2) move right 
+ 
+ Observation Space
+    position and velocity of the car (front and rear wheels?)
+"""
+
+
+class MountainCarEnvWrapper(GymEnvWrapper):
+
+    def __init__(self, renderingMode):
+        GymEnvWrapper.__init__(self, gym.make("MountainCar-v0"), renderingMode=renderingMode)
+
+    def ActionSpaceLabels(self, shouldUseShorthand=False):
+        if shouldUseShorthand:
+            return ["<", "x", ">"]
+        else:
+            return ["move left", "stop", "move right"]
+
+
+"""
+ Acrobot 
+ https://github.com/openai/gym/blob/master/gym/envs/classic_control/acrobot.py
+ 
+ Action Space
+    Discrete actions apply 0) pos, 1) none, 2) negative torque
+ 
+ Observation Space
+    cos and sin of the two joint angles and joint velocities (starting with joint on rot axis)
+ 
+"""
+
+
+class AcrobotEnvWrapper(GymEnvWrapper):
+
+    def __init__(self, renderingMode):
+        GymEnvWrapper.__init__(self, gymEnv=gym.make("Acrobot-v1"), renderingMode=renderingMode)
+
+    def ActionSpaceLabels(self, shouldUseShorthand=False):
+        if shouldUseShorthand:
+            return [">", "x", "<"]
+        else:
+            return ["push cart left", "push cart right"]
+
 
 """
  Cart pole
+ https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py
  
  An inverted pendulum balancing task for a pole attached to a cart that can move
  horizontally along a track. 
- states: 
-    [cart_massx cart_massy pole_massx pole_massy] (?)
- actions:
-    move left, move right
+ 
+ Action space
+    Discrete actions 0) push cart left or 1) push car right
+ 
+ Observation space
+    Position and velocity, respectively, of the cart and pole
 """
+
+
+class CartPoleEnvWrapper(GymEnvWrapper):
+
+    def __init__(self, renderingMode):
+        GymEnvWrapper.__init__(self, gymEnv=gym.make("CartPole-v1").env, renderingMode=renderingMode)
+
+    def ActionSpaceLabels(self, shouldUseShorthand=False):
+        if shouldUseShorthand:
+            return ["<", ">"]
+        else:
+            return ["push cart left", "push cart right"]
+
 
 """
  Taxi grid world
@@ -60,7 +164,7 @@ Action space
     4 directions of movement + pickup + dropoff.
     
 
-State space
+Observation space
     There are 500 total possible states, including when the passenger is in the car: 
     5x5 grid positions x (4 + 1) passenger positions x 4 destinations 
     Really, each row is a summarization of the car's and passenger's possible position in the grid. It 
@@ -72,11 +176,25 @@ after they are in the taxi. This situation be an example of how an over
 simplified reward signal might allow the system to waste resources, in this case time. 
 """
 
+
+class TaxiGridEnvWrapper(GymEnvWrapper):
+
+    def __init__(self, renderingMode):
+        GymEnvWrapper.__init__(self, gymEnv=gym.make("CartPole-v1"), renderingMode=renderingMode)
+
+    def ActionSpaceLabels(self, shouldUseShorthand=False):
+        if shouldUseShorthand:
+            return ["v", "^", ">", "<", "P", "D"]
+        else:
+            return ["move down", "move up", "move right", "move left", "pick up", "drop off"]
+
+
 """
  Windy grid world
  
  A custom env...
 """
+
 
 class WindyGridWorldEnv(discrete.DiscreteEnv):
 
@@ -166,3 +284,15 @@ class WindyGridWorldEnv(discrete.DiscreteEnv):
 
         if mode != 'ansi':
             sleep(0.1)
+
+
+class WindyGridEnvWrapper(GymEnvWrapper):
+
+    def __init__(self, renderingMode):
+        GymEnvWrapper.__init__(self, gymEnv=WindyGridWorldEnv(), renderingMode=renderingMode)
+
+    def ActionSpaceLabels(self, shouldUseShorthand=False):
+        if shouldUseShorthand:
+            return ["^", "v", "<", ">"]
+        else:
+            return ["move up", "move down", "move left", "move right"]

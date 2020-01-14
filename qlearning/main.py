@@ -5,12 +5,12 @@ from qlearning import QLearningAgent
 from environments import EnvTypes, ENV_DICTIONARY
 
 QTABLE_FILE = "qtable.pkl"
-SHOULD_REUSE_QTABLE = False
+SHOULD_REUSE_QTABLE = True
 VERBOSE = True
 
 # TODO: python args or consider adding parameter file (prefer latter)
 ALGO_TYPE = "qlearning"
-MAX_EPISODES = 10000
+MAX_EPISODES = 3000
 MAX_EPOCHS = 100000
 LEARNING_RATE = 0.1
 DISCOUNT_RATE = 0.6

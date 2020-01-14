@@ -10,7 +10,12 @@ DEFAULT_EPSILON = 1
 DEFAULT_GAMMA = 1
 DEFAULT_MAX_EPOCHS = float("inf")
 DEFAULT_MAX_EPISODES = 100000
-RENDERING_MODE="human"
+
+
+"""
+TODO: Desc
+"""
+
 
 class QLearningAgent:
 
@@ -60,7 +65,7 @@ class QLearningAgent:
             float    global training runtime
         """
         # Any newly seen state will be assigned q-values of zero for all states
-        self.qTable = defaultdict(lambda: np.zeros(env.action_space.n))
+        self.qTable = defaultdict(lambda: np.zeros(env.ActionSpaceN()))
 
         heading = f"In progress..."
 
@@ -71,17 +76,17 @@ class QLearningAgent:
                 epochs = totalReward = 0
                 frames = []
                 done = False
-                s = env.reset()
+                s = env.Reset()
                 if isinstance(s, np.ndarray): s = tuple(s)
 
                 start = timer()
-                actionCounts = np.zeros(env.action_space.n)
+                actionCounts = np.zeros(env.ActionSpaceN())
                 while not done and epochs < self.maxEpochs:
                     a = policy(s)
 
                     q = self.qTable[s][a]
 
-                    nextState, r, done, info = env.step(a)
+                    nextState, r, done, info = env.Step(a)
                     if isinstance(nextState, np.ndarray): nextState = tuple(nextState)
 
                     # Update state and q-value
@@ -91,14 +96,14 @@ class QLearningAgent:
 
                     actionCounts[a] += 1
                     if verbose and epochs % (self.maxEpochs / 2) == 0:
-                        RefreshScreen(mode=RENDERING_MODE)
+                        RefreshScreen(mode="human")
                         print(f"{heading} \nTraining\ne={i}\nr={r}\nq={self.qTable[s][a]: .2f}")
                         totalCount = actionCounts.sum()
                         for b, cnt in enumerate(actionCounts): print(f"a{b}  {cnt / totalCount: .4f}")
 
                         # yeh, yeh, skipped the first state
                         frames.append({
-                            'frame': env.render(mode=RENDERING_MODE),
+                            'frame': env.Render(),
                             'state': s,
                             'action': a,
                             'reward': r})
@@ -110,7 +115,7 @@ class QLearningAgent:
                 episodicMetrics.append(metrics)
 
         except MemoryError:
-            env.close()
+            env.Close()
 
         return episodicMetrics, timer() - globalStart
 
@@ -130,7 +135,7 @@ class QLearningAgent:
         else:
             # A q-table was likely loaded from disk
             assert isinstance(qTable, dict)
-            qTable = defaultdict(lambda: np.zeros(env.action_space.n))
+            qTable = defaultdict(lambda: np.zeros(env.ActionSpaceN()))
 
         heading = f"In progress..."
         episodicMetrics = []
@@ -140,28 +145,28 @@ class QLearningAgent:
                 epochs = totalReward = 0
                 frames = []
                 done = False
-                s = env.reset()
+                s = env.Reset()
                 if isinstance(s, np.ndarray): s = tuple(s)
 
                 start = timer()
-                actionCounts = np.zeros(env.action_space.n)
+                actionCounts = np.zeros(env.ActionSpaceN())
                 while not done and epochs < self.maxEpochs:
                     # Always exploit
                     a = np.argmax(qTable[s])
 
-                    s, r, done, info = env.step(a)
+                    s, r, done, info = env.Step(a)
                     if isinstance(s, np.ndarray): s = tuple(s)
 
                     actionCounts[a] += 1
                     if verbose and epochs % (self.maxEpochs / 2) == 0:
-                        RefreshScreen(mode=RENDERING_MODE)
+                        RefreshScreen(mode="human")
                         print(f"{heading} \nTesting\ne={i}\nr={r}\nq={qTable[s][a]: .2f}")
                         totalCount = actionCounts.sum()
                         for b, cnt in enumerate(actionCounts): print(f"a{b}  {cnt / totalCount: .4f}")
 
                         # yeh, yeh, skipped the first state
                         frames.append({
-                            'frame': env.render(mode=RENDERING_MODE),
+                            'frame': env.Render(),
                             'state': s,
                             'action': a,
                             'reward': r})
@@ -173,7 +178,7 @@ class QLearningAgent:
                 episodicMetrics.append(metrics)
 
         except MemoryError:
-            env.close()
+            env.Close()
 
         return episodicMetrics, timer() - globalStart
 
@@ -230,11 +235,14 @@ class QLearningAgent:
         assert self.qTable is not None
         return dict(self.qTable)
 
-    def PlotQValuesForEnv(self):
+    def PlotActionValues(self):
         """
         inputs:
             envType ?
         return:
             obj     figure containing plots of q-values for particular states
         """
+
+        # TODO: how to represent states generically? What aspects in the env are useful for
+        #       deciding how to interpret state info?
 

@@ -5,7 +5,8 @@ from qlearning import *
 from environments import EnvTypes, ENV_DICTIONARY
 from collections import defaultdict
 
-VERBOSE = True
+# Use this to toggle rendering AND console output
+VERBOSE = False
 I_TIMEOUT=100
 TEST_QTABLE_PKL = os.path.join(utils.GetScriptPath(), "data/test.pkl")
 #TEST_QTABLE_PKL = "data/test.pkl"
@@ -40,7 +41,7 @@ class TestQlearningSteps(unittest.TestCase):
         for i, res in enumerate(results):
             self.assertNotEqual(res, None, msg=f"result {i} is 'None'")
 
-        env.close()
+        env.Close()
 
     def SingleTestCycle(self, env):
         qla = QLearningAgent()
@@ -50,7 +51,7 @@ class TestQlearningSteps(unittest.TestCase):
         for i, res in enumerate(results):
             self.assertNotEqual(res, None, msg=f"result {i} is 'None'")
 
-        env.close()
+        env.Close()
 
     def test_SingleTrainCycleOnWindy(self):
         self.SingleTrainCycle(ENV_DICTIONARY[EnvTypes.WindyGridEnv]())
