@@ -25,15 +25,12 @@ def main():
     into array. Need to use different data structure that'll support different state reps,
     but also be friendly for visualization.
     """
-    env = EnvWrapperFactory(EnvTypes.MountainCarEnv)
+    env = EnvWrapperFactory(EnvTypes.AcroBotEnv)
     agent = QLearningAgent()
-    policy = agent.CreatePolicyFunction()
     agent.SetParameters(EPSILON, DISCOUNT_RATE, LEARNING_RATE, MAX_EPISODES, MAX_EPOCHS)
+    policy = agent.CreatePolicyFunction()
     env.Reset()
 
-    resultsTrain = None
-    succeeded = False
-    totalTrainingTime = totalEvaluationTime = 0
     if ALGO_TYPE.lower() == "bruteforce":
         print("Bruteforcing it")
         print("Finished search")
@@ -44,6 +41,7 @@ def main():
         if SHOULD_REUSE_QTABLE and os.path.exists(QTABLE_FILE):
             qTable = LoadFromPickle(QTABLE_FILE)
             print("Loaded q-table")
+            resultsTrain = None
             resultsTest, globalRuntime = agent.Evaluate(env, qTable, verbose=VERBOSE)
         else:
             resultsTrain, globalRuntime = agent.Train(env, policy, verbose=VERBOSE)
@@ -71,6 +69,7 @@ def main():
 
     for f in figs:
         SaveFigure(f)
+
 
 
 if __name__ == "__main__":
