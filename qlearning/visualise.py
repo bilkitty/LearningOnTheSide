@@ -12,10 +12,20 @@ def PlotPerformanceResults(agentMetrics):
         n/a
     """
 
-    plt.figure(num=1, figsize=(8,10), dpi=100)
+    fig = plt.figure(num=1, figsize=(8,10), dpi=100)
     rewards = [x.totalReward for x in agentMetrics]
     durations = [x.epochCount for x in agentMetrics]
-    penalties = [x.failedPickAndDropCount.sum() for x in agentMetrics]
+    actionCounts = [x.actionCount for x in agentMetrics]
+    plt.plot(a0, color='red', marker='o', markersize=2, linewidth=0, label="s", markevery=PLOT_SAMPLE_FREQ//10)
+    plt.plot(a1, color='green', marker='o', markersize=2, linewidth=0, label="n", markevery=PLOT_SAMPLE_FREQ//10 + 5)
+    plt.plot(a2, color='blue', marker='o', markersize=2, linewidth=0, label="e", markevery=PLOT_SAMPLE_FREQ//10 + 15)
+    plt.plot(a3, color='orange', marker='o', markersize=2, linewidth=0, label="w", markevery=PLOT_SAMPLE_FREQ//10 + 25)
+    plt.plot(a4, color='magenta', marker='x', markersize=2, linewidth=0, label="pick", markevery=PLOT_SAMPLE_FREQ//10 + 35)
+    plt.plot(a5, color='cyan', marker='d', markersize=2, linewidth=0, label="drop", markevery=PLOT_SAMPLE_FREQ//10 + 45)
+    plt.xlabel("episode")
+    plt.ylabel("action count")
+    plt.legend()
+
     plt.subplot(221)
     plt.plot(rewards, linewidth=0, marker="o", markevery=PLOT_SAMPLE_FREQ)
     plt.xlabel("episode")
@@ -24,6 +34,12 @@ def PlotPerformanceResults(agentMetrics):
     plt.plot(durations, linewidth=0, marker="o", markevery=PLOT_SAMPLE_FREQ)
     plt.xlabel("episode")
     plt.ylabel("total epochs")
+    plt.plot(actionCounts, cmap="warm", linewidth=2, label="drop", markevery=PLOT_SAMPLE_FREQ//10 + 45)
+    plt.xlabel("episode")
+    plt.ylabel("action count")
+    plt.legend()
+    return fig
+
 
 def plot_value_function(V, title="Value Function"):
     """
