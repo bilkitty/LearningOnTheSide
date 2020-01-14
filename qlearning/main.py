@@ -3,16 +3,16 @@ import sys, os
 from utils import *
 from qlearning import QLearningAgent
 from environments import EnvTypes, ENV_DICTIONARY
-from visualise import PlotPerformanceResults
+from visualise import PlotPerformanceResults, SaveFigure
 
 QTABLE_FILE = "qtable.pkl"
-SHOULD_REUSE_QTABLE = True
+SHOULD_REUSE_QTABLE = False
 SHOULD_PLOT = True
-VERBOSE = True
+VERBOSE = False
 
 # TODO: python args or consider adding parameter file (prefer latter)
 ALGO_TYPE = "qlearning"
-MAX_EPISODES = 3000
+MAX_EPISODES = 10000
 MAX_EPOCHS = 100000
 LEARNING_RATE = 0.1
 DISCOUNT_RATE = 0.6
@@ -25,7 +25,7 @@ def main():
     into array. Need to use different data structure that'll support different state reps,
     but also be friendly for visualization.
     """
-    env = ENV_DICTIONARY[EnvTypes.AcroBotEnv]()
+    env = ENV_DICTIONARY[EnvTypes.MountainCarEnv]()
     agent = QLearningAgent()
     policy = agent.CreatePolicyFunction()
     agent.SetParameters(EPSILON, DISCOUNT_RATE, LEARNING_RATE, MAX_EPISODES, MAX_EPOCHS)
@@ -65,7 +65,13 @@ def main():
     if not SHOULD_PLOT:
         return
 
-    PlotPerformanceResults(resultsTrain, env.ActionSpaceLabels(shouldUseShorthand=True))
+    figs = []
+    figs.append(PlotPerformanceResults(resultsTrain, env.ActionSpaceLabels(shouldUseShorthand=True), "training results"))
+    figs.append(PlotPerformanceResults(resultsTest, env.ActionSpaceLabels(shouldUseShorthand=True), "test results"))
+
+    for f in figs:
+        SaveFigure(f)
+
 
 if __name__ == "__main__":
     main()

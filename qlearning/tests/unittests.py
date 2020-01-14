@@ -3,17 +3,20 @@ import utils
 import os
 from collections import defaultdict
 from qlearning import *
-from environments import EnvTypes, ENV_DICTIONARY
+from environments import *
 from visualise import *
 
 # Use this to toggle rendering AND console output
 VERBOSE = False
 I_TIMEOUT=100
-#TEST_QTABLE_PKL = os.path.join(utils.GetScriptPath(), "data/test.pkl")
-TEST_QTABLE_PKL = "data/test.pkl"
-TEST_METRICS_PKL = "data/test_metrics.pkl"
+TEST_QTABLE_PKL = os.path.join(utils.GetScriptPath(), "data/test.pkl")
+TEST_METRICS_PKL = os.path.join(utils.GetScriptPath(), "data/mountaincar_metrics.pkl")
+#TEST_QTABLE_PKL = "data/test.pkl"
+#TEST_METRICS_PKL = "data/mountaincar_metrics.pkl"
 QTABLE = utils.LoadFromPickle(TEST_QTABLE_PKL)
 MOCK_RESULTS = utils.LoadFromPickle(TEST_METRICS_PKL)
+
+# TODO: remove dictionary of envs
 
 
 class TestEnvironmentCreation(unittest.TestCase):
@@ -112,9 +115,14 @@ class TestQlearningSteps(unittest.TestCase):
 
         self.assertNotEqual(a, abest)
 
+
 class TestVisualisation(unittest.TestCase):
     def test_PerformancePlot(self):
-            
+        env = MountainCarEnvWrapper(renderingMode="ansi")
+        fig = PlotPerformanceResults(MOCK_RESULTS, env.ActionSpaceLabels(shouldUseShorthand=True), "test mtn car")
+        self.assertTrue(fig.get_axes())
+        fig.savefig("test_PerformancePlot.png")
+
 
 if __name__ == "__main__":
     unittest.main()

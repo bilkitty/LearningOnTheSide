@@ -1,10 +1,14 @@
 import numpy as np
+import pandas as pd
+import matplotlib
 from matplotlib import pyplot as plt
+from utils import GetMaxFloat
 
-PLOT_SAMPLE_FREQ = 5000
+PLOT_SAMPLE_COUNT = 500
+SMOOTHING_WINDOW = 10
 
 
-def PlotPerformanceResults(agentMetrics, actionLabels):
+def PlotPerformanceResults(agentMetrics, actionLabels, name, xMax=GetMaxFloat()):
     """
     inputs:
 
@@ -12,28 +16,60 @@ def PlotPerformanceResults(agentMetrics, actionLabels):
         n/a
     """
 
-    fig = plt.figure(num=1, figsize=(8,10), dpi=100)
-    rewards = [x.totalReward for x in agentMetrics]
-    durations = [x.epochCount for x in agentMetrics]
-    actionCounts = [x.actionCount for x in agentMetrics]
-    plt.plot(actionCounts, cmap="hot", linewidth=2, label=actionLabels)#, markevery=PLOT_SAMPLE_FREQ//10 + 45)
-    plt.xlabel("episode")
-    plt.ylabel("action count")
-    plt.legend()
+    if agentMetrics is None:
+        print(f"No metrics to plot for '{name}'.")
+        return None
 
-    plt.subplot(221)
-    plt.plot(rewards, linewidth=0, marker="o", markevery=PLOT_SAMPLE_FREQ)
-    plt.xlabel("episode")
-    plt.ylabel("total reward")
-    plt.subplot(222)
-    plt.plot(durations, linewidth=0, marker="o", markevery=PLOT_SAMPLE_FREQ)
-    plt.xlabel("episode")
-    plt.ylabel("total epochs")
-    plt.plot(actionCounts, cmap="warm", linewidth=2, label=actionLabels, markevery=PLOT_SAMPLE_FREQ//10 + 45)
-    plt.xlabel("episode")
-    plt.ylabel("action count")
-    plt.legend()
+    fig = plt.figure(num=1, figsize=(8, 10), dpi=100)
+    plt.clf()
+    fig.suptitle(name, fontsize=10)
+    episodeCount = min(xMax, len(agentMetrics))
+    rewards = np.array([x.totalReward for x in agentMetrics][:episodeCount])
+    durations = np.array([x.epochCount for x in agentMetrics][:episodeCount])
+    actionCounts = np.array([x.actionCounts for x in agentMetrics][:episodeCount])
+    assert len(actionCounts[0]) == len(actionLabels), "mismatch between # actions and action labels"
+    # Subsample for prettier plots
+    plotSampleFreq = episodeCount // min(PLOT_SAMPLE_COUNT, episodeCount)
+    actionPlotSampleFreq = episodeCount // min(PLOT_SAMPLE_COUNT // 10, episodeCount)
+    rewards = rewards[::plotSampleFreq]
+    durations = durations[::plotSampleFreq]
+    actionCounts = actionCounts[::actionPlotSampleFreq]
+    # Also grab smoothed metrics
+    avgRewardsSmoothed = pd.Series(rewards).rolling(SMOOTHING_WINDOW, min_periods=SMOOTHING_WINDOW).mean()
+    stdRewardsSmoothed = pd.Series(rewards).rolling(SMOOTHING_WINDOW, min_periods=SMOOTHING_WINDOW).std()
+
+    ax0 = plt.subplot(311)
+    ax0.plot(np.linspace(0, episodeCount, episodeCount // plotSampleFreq), avgRewardsSmoothed, linewidth=2)
+    ax0.fill_between(np.linspace(0, episodeCount, episodeCount // plotSampleFreq),
+                     avgRewardsSmoothed + stdRewardsSmoothed,
+                     avgRewardsSmoothed - stdRewardsSmoothed,
+                     alpha=0.5)
+    ax0.set_xlim(0, episodeCount)
+    ax0.set_xlabel("episode")
+    ax0.set_ylabel("total reward")
+    ax1 = plt.subplot(312)
+    ax1.plot(np.linspace(0, episodeCount, episodeCount // plotSampleFreq), durations, linewidth=2)
+    ax1.set_xlim(0, episodeCount)
+    ax1.set_xlabel("episode")
+    ax1.set_ylabel("total epochs")
+    ax2 = plt.subplot(313)
+    for i, label in enumerate(actionLabels):
+        ax2.plot(np.linspace(0, episodeCount, episodeCount // actionPlotSampleFreq),
+                 actionCounts[:, i],
+                 label=label,
+                 linewidth=2)
+    ax2.set_xlim(0, episodeCount)
+    ax2.set_xlabel("episode")
+    ax2.set_ylabel("action count")
+    ax2.legend()
+    plt.close(fig)
     return fig
+
+
+def SaveFigure(fig):
+    figName = fig._suptitle.get_text().replace(' ', '_')
+    print(f"saving '{figName}'")
+    fig.savefig(f"{figName}.png")
 
 
 def plot_value_function(V, title="Value Function"):

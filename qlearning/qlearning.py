@@ -3,12 +3,12 @@ import random
 from collections import defaultdict
 from timeit import default_timer as timer
 from matplotlib import pyplot as plt
-from utils import RefreshScreen
+from utils import *
 
 DEFAULT_ALPHA = 1
 DEFAULT_EPSILON = 1
 DEFAULT_GAMMA = 1
-DEFAULT_MAX_EPOCHS = float("inf")
+DEFAULT_MAX_EPOCHS = GetMaxFloat()
 DEFAULT_MAX_EPISODES = 100000
 
 
@@ -109,6 +109,7 @@ class QLearningAgent:
                             'reward': r})
 
                     epochs += 1
+                    totalReward += r
 
                 metrics = QLearningAgent.Metrics(frames, epochs, timer() - start, totalReward, done)
                 metrics.SetActionCounts(actionCounts)
@@ -172,6 +173,7 @@ class QLearningAgent:
                             'reward': r})
 
                     epochs += 1
+                    totalReward += r
 
                 metrics = QLearningAgent.Metrics(frames, epochs, timer() - start, totalReward, done)
                 metrics.SetActionCounts(actionCounts)

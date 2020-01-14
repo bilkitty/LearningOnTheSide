@@ -6,6 +6,10 @@ def GetScriptPath():
     return os.path.dirname(os.path.realpath(sys.argv[0]))
 
 
+def GetMaxFloat():
+    return float("inf")
+
+
 def LoadFromPickle(filepath):
     f = open(filepath, "rb")
     contents = pkl.load(f)
