@@ -7,6 +7,8 @@ from utils import GetMaxFloat
 PLOT_SAMPLE_COUNT = 500
 SMOOTHING_WINDOW = 10
 
+# TODO: create frames replay if there's extra time
+
 
 def PlotPerformanceResults(agentMetrics, actionLabels, name, xMax=GetMaxFloat()):
     """

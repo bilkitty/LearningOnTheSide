@@ -3,8 +3,8 @@ import utils
 import os
 from collections import defaultdict
 from qlearning import *
-from environments import *
 from visualise import *
+from environments import EnvTypes, EnvWrapperFactory
 
 # Use this to toggle rendering AND console output
 VERBOSE = False
@@ -21,19 +21,19 @@ MOCK_RESULTS = utils.LoadFromPickle(TEST_METRICS_PKL)
 
 class TestEnvironmentCreation(unittest.TestCase):
     def test_CreateWindyGrid(self):
-        self.assertNotEqual(ENV_DICTIONARY[EnvTypes.WindyGridEnv](), None)
+        self.assertNotEqual(EnvWrapperFactory(EnvTypes.WindyGridEnv), None)
 
     def test_CreateTaxiGrid(self):
-        self.assertNotEqual(ENV_DICTIONARY[EnvTypes.TaxiGridEnv](), None)
+        self.assertNotEqual(EnvWrapperFactory(EnvTypes.TaxiGridEnv), None)
 
     def test_CreateCartPole(self):
-        self.assertNotEqual(ENV_DICTIONARY[EnvTypes.CartPoleEnv](), None)
+        self.assertNotEqual(EnvWrapperFactory(EnvTypes.CartPoleEnv), None)
 
     def test_CreateAcroBot(self):
-        self.assertNotEqual(ENV_DICTIONARY[EnvTypes.AcroBotEnv](), None)
+        self.assertNotEqual(EnvWrapperFactory(EnvTypes.AcroBotEnv), None)
 
     def test_CreateMountainCar(self):
-        self.assertNotEqual(ENV_DICTIONARY[EnvTypes.MountainCarEnv](), None)
+        self.assertNotEqual(EnvWrapperFactory(EnvTypes.MountainCarEnv), None)
 
 
 class TestQlearningSteps(unittest.TestCase):
@@ -60,34 +60,34 @@ class TestQlearningSteps(unittest.TestCase):
         env.Close()
 
     def test_SingleTrainCycleOnWindy(self):
-        self.SingleTrainCycle(ENV_DICTIONARY[EnvTypes.WindyGridEnv]())
+        self.SingleTrainCycle(EnvWrapperFactory(EnvTypes.WindyGridEnv))
 
     def test_SingleTrainCycleOnTaxi(self):
-        self.SingleTrainCycle(ENV_DICTIONARY[EnvTypes.TaxiGridEnv]())
+        self.SingleTrainCycle(EnvWrapperFactory(EnvTypes.TaxiGridEnv))
 
     def test_SingleTrainCycleOnCartPole(self):
-        self.SingleTrainCycle(ENV_DICTIONARY[EnvTypes.CartPoleEnv]())
+        self.SingleTrainCycle(EnvWrapperFactory(EnvTypes.CartPoleEnv))
 
     def test_SingleTrainCycleOnAcroBot(self):
-        self.SingleTrainCycle(ENV_DICTIONARY[EnvTypes.AcroBotEnv]())
+        self.SingleTrainCycle(EnvWrapperFactory(EnvTypes.AcroBotEnv))
 
     def test_SingleTrainCycleOnMountainCar(self):
-        self.SingleTrainCycle(ENV_DICTIONARY[EnvTypes.MountainCarEnv]())
+        self.SingleTrainCycle(EnvWrapperFactory(EnvTypes.MountainCarEnv))
 
     def test_SingleEvaluationCycleOnWindy(self):
-        self.SingleTestCycle(ENV_DICTIONARY[EnvTypes.WindyGridEnv]())
+        self.SingleTestCycle(EnvWrapperFactory(EnvTypes.WindyGridEnv))
 
     def test_SingleEvaluationCycleOnTaxi(self):
-        self.SingleTestCycle(ENV_DICTIONARY[EnvTypes.TaxiGridEnv]())
+        self.SingleTestCycle(EnvWrapperFactory(EnvTypes.TaxiGridEnv))
 
     def test_SingleEvaluationCycleOnCartPole(self):
-        self.SingleTestCycle(ENV_DICTIONARY[EnvTypes.CartPoleEnv]())
+        self.SingleTestCycle(EnvWrapperFactory(EnvTypes.CartPoleEnv))
 
     def test_SingleEvaluationCycleOnAcroBot(self):
-        self.SingleTestCycle(ENV_DICTIONARY[EnvTypes.AcroBotEnv]())
+        self.SingleTestCycle(EnvWrapperFactory(EnvTypes.AcroBotEnv))
 
     def test_SingleEvaluationCycleOnMountainCar(self):
-        self.SingleTestCycle(ENV_DICTIONARY[EnvTypes.MountainCarEnv]())
+        self.SingleTestCycle(EnvWrapperFactory(EnvTypes.MountainCarEnv))
 
     def test_CreatePolicyFunction(self):
         # Setup mock q-table
@@ -118,7 +118,7 @@ class TestQlearningSteps(unittest.TestCase):
 
 class TestVisualisation(unittest.TestCase):
     def test_PerformancePlot(self):
-        env = MountainCarEnvWrapper(renderingMode="ansi")
+        env = EnvWrapperFactory(EnvTypes.MountainCarEnv, renderingMode="ansi")
         fig = PlotPerformanceResults(MOCK_RESULTS, env.ActionSpaceLabels(shouldUseShorthand=True), "test mtn car")
         self.assertTrue(fig.get_axes())
         fig.savefig("test_PerformancePlot.png")

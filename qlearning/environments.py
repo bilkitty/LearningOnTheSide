@@ -21,6 +21,8 @@ RENDERING_MODE = "human"
  bunches of maintenance as new env are added. On the other hand, there's far more interface control.
 """
 
+# TODO: environment wrapper creation function
+
 
 class EnvTypes:
     WindyGridEnv = "WindyGridWorld"
@@ -30,13 +32,19 @@ class EnvTypes:
     MountainCarEnv = "MountainCar"
 
 
-ENV_DICTIONARY = {
-    "WindyGridWorld": lambda : WindyGridEnvWrapper(RENDERING_MODE),
-    "TaxiGridWorld": lambda : TaxiGridEnvWrapper(RENDERING_MODE),
-    "CartPole": lambda : CartPoleEnvWrapper(RENDERING_MODE),
-    "Acrobot": lambda: AcrobotEnvWrapper(RENDERING_MODE),
-    "MountainCar": lambda: MountainCarEnvWrapper(RENDERING_MODE)
-}
+def EnvWrapperFactory(envType, renderingMode=RENDERING_MODE):
+    if envType == EnvTypes.WindyGridEnv:
+        return WindyGridEnvWrapper(renderingMode)
+    elif envType == EnvTypes.TaxiGridEnv:
+        return TaxiGridEnvWrapper(renderingMode)
+    elif envType == EnvTypes.CartPoleEnv:
+        return CartPoleEnvWrapper(renderingMode)
+    elif envType == EnvTypes.AcroBotEnv:
+        return AcrobotEnvWrapper(renderingMode)
+    elif envType == EnvTypes.MountainCarEnv:
+        return MountainCarEnvWrapper(renderingMode)
+    else:
+        raise NameError(f"Unsupported environment type '{envType}'")
 
 
 class GymEnvWrapper:
@@ -77,6 +85,12 @@ class GymEnvWrapper:
  
  Observation Space
     position and velocity of the car (front and rear wheels?)
+    
+ NOTE:
+    Vanilla qlearning does not converge in reasonable amount of time as compared to
+    other environments. Explore feature transformations for observations that'll 
+    yield better signals? Any lit on using feature transforms in this way?
+    
 """
 
 
@@ -180,7 +194,7 @@ simplified reward signal might allow the system to waste resources, in this case
 class TaxiGridEnvWrapper(GymEnvWrapper):
 
     def __init__(self, renderingMode):
-        GymEnvWrapper.__init__(self, gymEnv=gym.make("CartPole-v1"), renderingMode=renderingMode)
+        GymEnvWrapper.__init__(self, gymEnv=gym.make("Taxi-v3"), renderingMode=renderingMode)
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         if shouldUseShorthand:

@@ -1,14 +1,14 @@
 import sys, os
 
 from utils import *
-from environments import EnvTypes, ENV_DICTIONARY
+from environments import EnvTypes, EnvWrapperFactory
 from visualise import PlotPerformanceResults, SaveFigure
 
 # TODO: python args or consider adding parameter file (prefer latter)
 
 
 def main():
-    env = ENV_DICTIONARY[EnvTypes.TaxiGridEnv]()
+    env = EnvWrapperFactory(EnvTypes.TaxiGridEnv)
 
     resultsTrain = LoadFromPickle("train.pkl")
     resultsTest = LoadFromPickle("eval.pkl")

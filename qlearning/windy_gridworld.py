@@ -1,3 +1,4 @@
+
 import gym
 import numpy as np
 import sys
@@ -5,6 +6,11 @@ import os
 from time import sleep
 from gym.envs.toy_text import discrete
 import random
+
+if sys.version_info[0] == '2':
+    from StringIO import StringIO
+else:
+    from io import StringIO
 
 UP = 0
 RIGHT = 1
@@ -55,6 +61,7 @@ class WindyGridWorldEnv(discrete.DiscreteEnv):
             P[s][LEFT] = self._calculate_transition_prob(position, [0, -1], winds)
 
         # We always start in state (3, 0)
+        # Get one-hot encoding of initial state
         isd = np.zeros(nS)
         isd[np.ravel_multi_index(self.startPos, self.shape)] = 1.0
 

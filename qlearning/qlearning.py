@@ -2,7 +2,6 @@ import numpy as np
 import random
 from collections import defaultdict
 from timeit import default_timer as timer
-from matplotlib import pyplot as plt
 from utils import *
 
 DEFAULT_ALPHA = 1

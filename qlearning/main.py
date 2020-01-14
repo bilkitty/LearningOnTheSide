@@ -2,7 +2,7 @@ import sys, os
 
 from utils import *
 from qlearning import QLearningAgent
-from environments import EnvTypes, ENV_DICTIONARY
+from environments import EnvTypes, EnvWrapperFactory
 from visualise import PlotPerformanceResults, SaveFigure
 
 QTABLE_FILE = "qtable.pkl"
@@ -12,7 +12,7 @@ VERBOSE = False
 
 # TODO: python args or consider adding parameter file (prefer latter)
 ALGO_TYPE = "qlearning"
-MAX_EPISODES = 10000
+MAX_EPISODES = 100000
 MAX_EPOCHS = 100000
 LEARNING_RATE = 0.1
 DISCOUNT_RATE = 0.6
@@ -25,7 +25,7 @@ def main():
     into array. Need to use different data structure that'll support different state reps,
     but also be friendly for visualization.
     """
-    env = ENV_DICTIONARY[EnvTypes.MountainCarEnv]()
+    env = EnvWrapperFactory(EnvTypes.MountainCarEnv)
     agent = QLearningAgent()
     policy = agent.CreatePolicyFunction()
     agent.SetParameters(EPSILON, DISCOUNT_RATE, LEARNING_RATE, MAX_EPISODES, MAX_EPOCHS)
