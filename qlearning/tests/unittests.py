@@ -1,16 +1,19 @@
 import unittest
 import utils
 import os
+from collections import defaultdict
 from qlearning import *
 from environments import EnvTypes, ENV_DICTIONARY
-from collections import defaultdict
+from visualise import *
 
 # Use this to toggle rendering AND console output
 VERBOSE = False
 I_TIMEOUT=100
-TEST_QTABLE_PKL = os.path.join(utils.GetScriptPath(), "data/test.pkl")
-#TEST_QTABLE_PKL = "data/test.pkl"
+#TEST_QTABLE_PKL = os.path.join(utils.GetScriptPath(), "data/test.pkl")
+TEST_QTABLE_PKL = "data/test.pkl"
+TEST_METRICS_PKL = "data/test_metrics.pkl"
 QTABLE = utils.LoadFromPickle(TEST_QTABLE_PKL)
+MOCK_RESULTS = utils.LoadFromPickle(TEST_METRICS_PKL)
 
 
 class TestEnvironmentCreation(unittest.TestCase):
@@ -109,6 +112,9 @@ class TestQlearningSteps(unittest.TestCase):
 
         self.assertNotEqual(a, abest)
 
+class TestVisualisation(unittest.TestCase):
+    def test_PerformancePlot(self):
+            
 
 if __name__ == "__main__":
     unittest.main()

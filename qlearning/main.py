@@ -3,9 +3,11 @@ import sys, os
 from utils import *
 from qlearning import QLearningAgent
 from environments import EnvTypes, ENV_DICTIONARY
+from visualise import PlotPerformanceResults
 
 QTABLE_FILE = "qtable.pkl"
 SHOULD_REUSE_QTABLE = True
+SHOULD_PLOT = True
 VERBOSE = True
 
 # TODO: python args or consider adding parameter file (prefer latter)
@@ -27,10 +29,7 @@ def main():
     agent = QLearningAgent()
     policy = agent.CreatePolicyFunction()
     agent.SetParameters(EPSILON, DISCOUNT_RATE, LEARNING_RATE, MAX_EPISODES, MAX_EPOCHS)
-    env.reset()
-
-    infoText = f"state space: {env.action_space}\n"
-    infoText += f"obs space: {env.observation_space}\n"
+    env.Reset()
 
     resultsTrain = None
     succeeded = False
@@ -61,8 +60,12 @@ def main():
         return
 
     # Good practice to close env when finished :)
-    env.close()
+    env.Close()
 
+    if not SHOULD_PLOT:
+        return
+
+    PlotPerformanceResults(resultsTrain, env.ActionSpaceLabels(shouldUseShorthand=True))
 
 if __name__ == "__main__":
     main()
