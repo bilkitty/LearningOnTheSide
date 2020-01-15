@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from environments import *
 # TODO: after reorg, undo qlearning dependence
 
+
 class Actor(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_size, learning_rate=3e-4):
         nn.Module.__init__(self)
@@ -55,22 +56,56 @@ class Critic(nn.Module):
 
 
 class DdpgAgent:
-    def __init__(self, env, hiddenSize):
+    DEFAULT_GAMMA = 0.1
+    DEFAULT_MAX_EPISODES = 10
+    DEFAULT_MAX_EPOCHS = 1000
+
+    def __init__(self, gamma):
+        self.gamma = gamma
+        self.actor = None
+        self.actorTarget = None
+        self.critic = None
+        self.criticTarget = None
+
+    def SetupNetworks(self, env, hiddenSize):
         numStates = env.ObservationSpaceN()
         numActions = env.ActionSpaceN()
-        actor = Actor(numStates, hiddenSize, numActions)
-        actorTarget = Actor(numStates, hiddenSize, numActions)
-        critic = Critic(numStates + numActions, hiddenSize, numActions)
-        criticTarget = Critic(numStates + numActions, hiddenSize, numActions)
+        self.actor = Actor(numStates, hiddenSize, numActions)
+        self.actorTarget = Actor(numStates, hiddenSize, numActions)
+        self.critic = Critic(numStates + numActions, hiddenSize, numActions)
+        self.criticTarget = Critic(numStates + numActions, hiddenSize, numActions)
 
         # We initialize the target networks as copies of the original networks
-        for targetParam, param in zip(actorTarget.parameters(), actor.parameters()):
+        for targetParam, param in zip(self.actorTarget.parameters(), self.actor.parameters()):
             targetParam.data.copy_(param.data)
-        for targetParam, param in zip(criticTarget.parameters(), critic.parameters()):
+        for targetParam, param in zip(self.criticTarget.parameters(), self.critic.parameters()):
             targetParam.data.copy_(param.data)
 
-    def Train(self):
-        raise NotImplementedError
+    def SetParameters(self, gamma):
+        self.gamma = gamma
+
+    def Train(self, env, hiddenSize=3):
+
+        self.SetupNetworks(env, hiddenSize)
+        for i in np.arange(DdpgAgent.DEFAULT_MAX_EPISODES):
+            epoch = 0
+            reward = 0
+            done = False
+            state = env.reset()
+            while not done:
+                actions = self.actor.forward(state) # TODO: add some noise
+                value = self.critic.forward(state, actions)
+
+                nextState, reward, done, _ = env.step(actions) # TODO: store in replay buffer
+                nextActions = self.actorTarget.forward(nextState)
+
+                # TODO: using samples from replay buffer...
+                # update policy networks
+
+                # update value networks
+                targetValue = reward + self.gamma * self.criticTarget.forward(nextState, nextActions)
+                loss = nn.MSELoss(value, targetValue)
+                # TODO: optimizer
 
     def Test(self):
         raise NotImplementedError

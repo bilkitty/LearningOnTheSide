@@ -12,7 +12,7 @@ NN_HIDDEN_SIZE = 3
 class TestDdpgComponents(unittest.TestCase):
     def test_CreateAgent(self):
         env = EnvWrapperFactory(EnvTypes.CartPoleEnv)
-        self.assertNotEqual(DdpgAgent(env, NN_HIDDEN_SIZE), None)
+        self.assertNotEqual(DdpgAgent(NN_HIDDEN_SIZE), None)
 
 
 if __name__ == "__main__":
