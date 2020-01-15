@@ -16,7 +16,7 @@ TEST_METRICS_PKL = os.path.join(utils.GetScriptPath(), "data/mountaincar_metrics
 QTABLE = utils.LoadFromPickle(TEST_QTABLE_PKL)
 MOCK_RESULTS = utils.LoadFromPickle(TEST_METRICS_PKL)
 
-# TODO: remove dictionary of envs
+# TODO: separate file for env creation tests (really need a separate proj)
 
 
 class TestEnvironmentCreation(unittest.TestCase):

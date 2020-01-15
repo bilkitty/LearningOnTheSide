@@ -1,0 +1,5 @@
+Q-learning it
+Finished training:  4.2705s
+Finished evaluation:  1.6709s
+saving 'WindyGridWorld_training_results'
+saving 'WindyGridWorld_test_results'

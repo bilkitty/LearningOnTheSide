@@ -57,7 +57,7 @@ class GymEnvWrapper:
         return self.env.action_space.n
 
     def ObservationSpaceN(self):
-        return self.env.observation_space.n
+        return self.env.observation_space.shape[0]
 
     def Render(self):
         self.env.render(self.renderingMode)

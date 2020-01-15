@@ -1,0 +1,5 @@
+Q-learning it
+Finished training:  290.3862s
+Finished evaluation:  258.6993s
+saving 'Acrobot_training_results'
+saving 'Acrobot_test_results'

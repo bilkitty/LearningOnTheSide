@@ -1,11 +1,11 @@
 import sys, os
 
 from utils import *
+from ddpg import DdpgAgent
 from qlearning import QLearningAgent
 from environments import EnvTypes, EnvWrapperFactory
 from visualise import PlotPerformanceResults, SaveFigure
 
-QTABLE_FILE = "qtable.pkl"
 SHOULD_REUSE_QTABLE = False
 SHOULD_PLOT = True
 VERBOSE = False
@@ -17,6 +17,10 @@ MAX_EPOCHS = 100000
 LEARNING_RATE = 0.1
 DISCOUNT_RATE = 0.6
 EPSILON = 0.1
+NN_HIDDEN_SIZE = 3
+
+ENVS = [EnvTypes.WindyGridEnv, EnvTypes.TaxiGridEnv, EnvTypes.CartPoleEnv,
+        EnvTypes.AcroBotEnv, EnvTypes.MountainCarEnv]
 
 
 def main():
@@ -25,51 +29,63 @@ def main():
     into array. Need to use different data structure that'll support different state reps,
     but also be friendly for visualization.
     """
-    env = EnvWrapperFactory(EnvTypes.AcroBotEnv)
-    agent = QLearningAgent()
-    agent.SetParameters(EPSILON, DISCOUNT_RATE, LEARNING_RATE, MAX_EPISODES, MAX_EPOCHS)
-    policy = agent.CreatePolicyFunction()
+    envIndex = 0
+    maxEpisodes = MAX_EPISODES
+    if len(sys.argv) > 1 and sys.argv[1].isdigit():
+        envIndex = int(sys.argv[1])
+        if envIndex < 0 or len(ENVS) <= envIndex:
+            print(f"Invalid env selected '{envIndex}'")
+            return 1
+    if len(sys.argv) > 2:
+        maxEpisodes = int(sys.argv[2])
+
+    env = EnvWrapperFactory(ENVS[envIndex])
     env.Reset()
 
+    qTableFile = f"{ENVS[envIndex]}_qtable.pkl"
     if ALGO_TYPE.lower() == "bruteforce":
         print("Bruteforcing it")
         print("Finished search")
-        return
+        return 0
     elif ALGO_TYPE.lower() == "qlearning":
         print("Q-learning it")
+        agent = QLearningAgent()
+        agent.SetParameters(EPSILON, DISCOUNT_RATE, LEARNING_RATE, maxEpisodes, MAX_EPOCHS)
+        policy = agent.CreatePolicyFunction()
         # load q-table if available
-        if SHOULD_REUSE_QTABLE and os.path.exists(QTABLE_FILE):
-            qTable = LoadFromPickle(QTABLE_FILE)
+        if SHOULD_REUSE_QTABLE and os.path.exists(qTableFile):
+            qTable = LoadFromPickle(qTableFile)
             print("Loaded q-table")
             resultsTrain = None
             resultsTest, globalRuntime = agent.Evaluate(env, qTable, verbose=VERBOSE)
         else:
             resultsTrain, globalRuntime = agent.Train(env, policy, verbose=VERBOSE)
             qTable = agent.QValues()
-            SaveAsPickle(qTable, QTABLE_FILE)
-            SaveAsPickle(resultsTrain, "train.pkl")
+            SaveAsPickle(qTable, qTableFile)
+            SaveAsPickle(resultsTrain, f"{ENVS[envIndex]}_train.pkl")
             print(f"Finished training: {globalRuntime: .4f}s")
             resultsTest, globalRuntime = agent.Evaluate(env, verbose=VERBOSE)
 
-        SaveAsPickle(resultsTest, "eval.pkl")
+        SaveAsPickle(resultsTest, f"{ENVS[envIndex]}_test.pkl")
         print(f"Finished evaluation: {globalRuntime: .4f}s")
+    elif ALGO_TYPE.lower() == "ddpg":
+        agent = DdpgAgent(env, NN_HIDDEN_SIZE)
     else:
-        print(f"Unsupported algo type {ALGO_TYPE}")
-        return
+        print(f"Unsupported algo type '{ALGO_TYPE}'")
+        return 1
 
     # Good practice to close env when finished :)
     env.Close()
 
     if not SHOULD_PLOT:
-        return
+        return 0
 
     figs = []
-    figs.append(PlotPerformanceResults(resultsTrain, env.ActionSpaceLabels(shouldUseShorthand=True), "training results"))
-    figs.append(PlotPerformanceResults(resultsTest, env.ActionSpaceLabels(shouldUseShorthand=True), "test results"))
+    figs.append(PlotPerformanceResults(resultsTrain, env.ActionSpaceLabels(shouldUseShorthand=True), f"{ENVS[envIndex]} training results"))
+    figs.append(PlotPerformanceResults(resultsTest, env.ActionSpaceLabels(shouldUseShorthand=True), f"{ENVS[envIndex]} test results"))
 
     for f in figs:
         SaveFigure(f)
-
 
 
 if __name__ == "__main__":

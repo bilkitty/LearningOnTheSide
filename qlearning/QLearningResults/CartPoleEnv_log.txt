@@ -1,0 +1,5 @@
+Q-learning it
+Finished training:  22.6494s
+Finished evaluation:  11.1339s
+saving 'CartPole_training_results'
+saving 'CartPole_test_results'

@@ -60,8 +60,8 @@ class QLearningAgent:
             policy   func          a function that selects env actions in some way
             verbose  bool          (optional) enables console output when True
         return:
-            Metrics  performance results like timesteps, rewards, penalties, etc. per episode
-            float    global training runtime
+                     Metrics  performance results like timesteps, rewards, penalties, etc. per episode
+                     float    global training runtime
         """
         # Any newly seen state will be assigned q-values of zero for all states
         self.qTable = defaultdict(lambda: np.zeros(env.ActionSpaceN()))
@@ -126,8 +126,8 @@ class QLearningAgent:
             qTable   dict          (optional) an LUT for best actions for every state
             verbose  bool          (optional) enables console output when True
         return:
-            Metrics  performance results like timesteps, rewards, penalties, etc. per episode
-            float    global test runtime
+                     Metrics  performance results like timesteps, rewards, penalties, etc. per episode
+                     float    global test runtime
         """
         if qTable is None:
             assert self.qTable is not None
@@ -188,7 +188,7 @@ class QLearningAgent:
         inputs:
             dict    qTable        an LUT of action-values per state
         return:
-            func    function that generates action based on state
+                    func    function that generates action based on state
         """
         def EpsilonGreedyPolicy(s):
             assert(self.qTable is not None or qTable is not None)
@@ -231,7 +231,7 @@ class QLearningAgent:
         inputs:
             n/a
         return:
-            dict    contains the rows of virtual mxn q-value table for m states and n actions
+                    dict    contains the rows of virtual mxn q-value table for m states and n actions
         """
         assert self.qTable is not None
         return dict(self.qTable)
@@ -241,7 +241,7 @@ class QLearningAgent:
         inputs:
             envType ?
         return:
-            obj     figure containing plots of q-values for particular states
+                    figure  figure containing plots of q-values for particular states
         """
 
         # TODO: how to represent states generically? What aspects in the env are useful for
