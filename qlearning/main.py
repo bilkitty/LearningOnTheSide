@@ -1,7 +1,7 @@
 import sys, os
 
 from utils import *
-from ddpg import DdpgAgent
+#from ddpg import DdpgAgent
 from qlearning import QLearningAgent
 from environments import EnvTypes, EnvWrapperFactory
 from visualise import PlotPerformanceResults, SaveFigure
@@ -14,8 +14,8 @@ VERBOSE = False
 ALGO_TYPE = "qlearning"
 MAX_EPISODES = 100000
 MAX_EPOCHS = 100000
-LEARNING_RATE = 0.1
-DISCOUNT_RATE = 0.6
+LEARNING_RATE = 0.6
+DISCOUNT_RATE = 0.1
 EPSILON = 0.1
 NN_HIDDEN_SIZE = 3
 
@@ -48,7 +48,8 @@ def main():
         print("Finished search")
         return 0
     elif ALGO_TYPE.lower() == "qlearning":
-        print("Q-learning it")
+        print(f"Q-learning it\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={MAX_EPOCHS}")
+        print(f"\n epsilon={EPSILON}\n  gamma={DISCOUNT_RATE}\n  alpha={LEARNING_RATE}\n")
         agent = QLearningAgent()
         agent.SetParameters(EPSILON, DISCOUNT_RATE, LEARNING_RATE, maxEpisodes, MAX_EPOCHS)
         policy = agent.CreatePolicyFunction()
@@ -69,7 +70,8 @@ def main():
         SaveAsPickle(resultsTest, f"{ENVS[envIndex]}_test.pkl")
         print(f"Finished evaluation: {globalRuntime: .4f}s")
     elif ALGO_TYPE.lower() == "ddpg":
-        agent = DdpgAgent(env, NN_HIDDEN_SIZE)
+        #agent = DdpgAgent(env, NN_HIDDEN_SIZE)
+        print("nothing to see here...")
     else:
         print(f"Unsupported algo type '{ALGO_TYPE}'")
         return 1

@@ -4,9 +4,9 @@ from collections import defaultdict
 from timeit import default_timer as timer
 from utils import *
 
-DEFAULT_ALPHA = 1
-DEFAULT_EPSILON = 1
-DEFAULT_GAMMA = 1
+DEFAULT_ALPHA = 0.6
+DEFAULT_EPSILON = 0.1
+DEFAULT_GAMMA = 0.1
 DEFAULT_MAX_EPOCHS = GetMaxFloat()
 DEFAULT_MAX_EPISODES = 100000
 
