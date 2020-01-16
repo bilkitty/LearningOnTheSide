@@ -1,0 +1,7 @@
+data/
+algo/qlearning/__pycache__/
+algo/actorcritic/__pycache__/
+algo/policygradients/__pycache__/
+algo/qlearning/.idea
+algo/actorcritic/.idea
+algo/policygradients/.idea

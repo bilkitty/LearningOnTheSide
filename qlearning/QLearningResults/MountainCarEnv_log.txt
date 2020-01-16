@@ -1,5 +1,0 @@
-Q-learning it
-Finished training:  51.9012s
-Finished evaluation:  40.2520s
-saving 'MountainCar_training_results'
-saving 'MountainCar_test_results'

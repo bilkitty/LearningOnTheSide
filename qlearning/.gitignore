@@ -1,6 +1,0 @@
-*.png
-*.pkl
-__pycache__/
-../__pycache__/
-../results/
-

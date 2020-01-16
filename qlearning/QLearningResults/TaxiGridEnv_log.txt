@@ -1,5 +1,0 @@
-Q-learning it
-Finished training:  33.2048s
-Finished evaluation:  12.8868s
-saving 'TaxiGridWorld_training_results'
-saving 'TaxiGridWorld_test_results'
