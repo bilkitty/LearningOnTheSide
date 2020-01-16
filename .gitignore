@@ -1,3 +1,5 @@
+.idea/
+__pycache__/
 data/
 algo/.idea
 algo/qlearning/__pycache__/
@@ -11,3 +13,8 @@ tests/.idea
 tests/algo/__pycache__/
 tests/common/__pycache__/
 tests/gymrunner/__pycache__/
+sim/.idea/
+sim/*.urdf
+sim/venv/
+sim_config/
+learning_config/

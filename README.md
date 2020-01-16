@@ -7,7 +7,7 @@ $TESTDIR=$PROJDIR/test
 
 
 Append to ~/.bashrc
-  export PYTHONPATH="$PYTHONPATH:$PROJDIR/common:$PROJDIR/algo:$PROJDIR/gym"
+  export PYTHONPATH="$PYTHONPATH:$PROJDIR/common:$PROJDIR/algo:$PROJDIR/gymrunner"
 
 $ source ~/.bashrc
 
