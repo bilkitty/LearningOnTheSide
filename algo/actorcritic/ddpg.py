@@ -1,17 +1,22 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
+from torch.autograd import Variable
+
 from environments import *
+from memory import *
+
 # TODO: after reorg, undo qlearning dependence
 
 
 class Actor(nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_size, learning_rate=3e-4):
+    def __init__(self, num_states, num_actions, hidden_size, learning_rate=3e-4):
         nn.Module.__init__(self)
 
         self.num_actions = num_actions
 
-        self.linear1 = nn.Linear(num_inputs, hidden_size)
+        self.linear1 = nn.Linear(num_states, hidden_size)
         self.linear2 = nn.Linear(hidden_size, hidden_size)
         self.linear3 = nn.Linear(hidden_size, num_actions)
     
@@ -32,9 +37,9 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_size, learning_rate=3e-4):
+    def __init__(self, num_states, num_actions, hidden_size, learning_rate=3e-4):
         nn.Module.__init__(self)
-        self.linear1 = nn.Linear(num_inputs, hidden_size)
+        self.linear1 = nn.Linear(num_states, hidden_size)
         self.linear2 = nn.Linear(hidden_size, hidden_size)
         self.linear3 = nn.Linear(hidden_size, num_actions)
 
@@ -54,18 +59,27 @@ class Critic(nn.Module):
 
         return value
 
+# TODO: memory buffer for action replay process
+# TODO: noise process for action exploration
+
 
 class DdpgAgent:
-    DEFAULT_GAMMA = 0.1
-    DEFAULT_MAX_EPISODES = 10
-    DEFAULT_MAX_EPOCHS = 1000
+    DEFAULT_MAX_EPISODES = 100000
+    DEFAULT_MAX_EPOCHS = 100000
 
-    def __init__(self, gamma):
-        self.gamma = gamma
+    def __init__(self, maxMemorySize, maxEpisodes=DEFAULT_MAX_EPISODES, maxEpochs=DEFAULT_MAX_EPOCHS):
         self.actor = None
         self.actorTarget = None
         self.critic = None
         self.criticTarget = None
+        self.actorOptimizer = None
+        self.criticOptimizer = None
+
+        self.experiences = Memory(maxMemorySize)
+        self.noiseProcess = None
+        self.maxEpisodes = maxEpisodes
+        self.maxEpochs = maxEpochs
+        self.lossFunction = lambda x, y: nn.MSELoss(x, y)
 
     def SetupNetworks(self, env, hiddenSize):
         numStates = env.ObservationSpaceN()
@@ -81,31 +95,66 @@ class DdpgAgent:
         for targetParam, param in zip(self.criticTarget.parameters(), self.critic.parameters()):
             targetParam.data.copy_(param.data)
 
-    def SetParameters(self, gamma):
-        self.gamma = gamma
+        # TODO: random actor/critic weight initialization (Javier?)
+        # TODO: init target network weights (copy of above)
 
-    def Train(self, env, hiddenSize=3):
+    def SetupOptimizers(self, actorLearningRate, criticLearningRate):
+        if self.actor and self.critic:
+            self.actorOptimizer = torch.optim.Adam(self.actor.parameters(), lr=actorLearningRate)
+            self.criticOptimizer = torch.optim.Adam(self.critic.parameters(), lr=criticLearningRate)
+            return True
+        else:
+            return False
 
+    def GetAction(self, state):
+        state = Variable(torch.from_numpy(state).float().unsqueeze(0))
+        action = self.actor.forward(state)
+        action = action.detach().numpy()[0,0]
+        # TODO: is this the best action? What specifically is this?
+        return action
+
+    def UpdateUsingReplay(self, gamma, batchSize):
+        states, actions, rewards, nextStates, status = self.experiences.sample(batchSize)
+
+        # Create tensors from experience buffers
+        states = torch.FloatTensor(states)
+        actions = torch.FloatTensor(actions)
+        rewards = torch.FloatTensor(rewards)
+        nextStates = torch.FloatTensor(nextStates)
+
+        # TODO: update value network using mse loss btw learnt and target value
+        # Compute critic loss from batches
+        values = self.critic.forward(states, actions)
+        nextActions = self.actorTarget.forward(nextStates).detach()
+        targetValues = rewards + gamma * self.criticTarget.forward(nextStates, nextActions)
+        criticLoss = self.lossFunction(values, targetValues)
+
+        # TODO: update policy network using sampled policy grad
+
+        # TODO: update target network params as weighted avg of target and learnt params
+
+    def Train(self, env, gamma, hiddenSize, actorLearningRate, criticLearningRate, batchSize):
+        # TODO: could create generic training function for all agents; a reason to mv args to ctor
+        #       as a result, the caller could have better control over training, e.g., interrupt.
+        gamma = min(max(0, gamma), 1)
         self.SetupNetworks(env, hiddenSize)
-        for i in np.arange(DdpgAgent.DEFAULT_MAX_EPISODES):
+        self.SetupOptimizers(actorLearningRate, criticLearningRate)
+
+        for i in np.arange(self.maxEpisodes):
             epoch = 0
             reward = 0
             done = False
-            state = env.reset()
-            while not done:
-                actions = self.actor.forward(state) # TODO: add some noise
-                value = self.critic.forward(state, actions)
+            state = env.Reset()
+            # TODO: initialize noise process
 
-                nextState, reward, done, _ = env.step(actions) # TODO: store in replay buffer
-                nextActions = self.actorTarget.forward(nextState)
+            while not done and epoch < self.maxEpochs:
+                action = self.GetAction(state) # TODO: add some noise
 
-                # TODO: using samples from replay buffer...
-                # update policy networks
+                nextState, reward, done, _ = env.Step(action) # TODO: store in replay buffer: could we try spacing these out?
 
-                # update value networks
-                targetValue = reward + self.gamma * self.criticTarget.forward(nextState, nextActions)
-                loss = nn.MSELoss(value, targetValue)
-                # TODO: optimizer
+                self.UpdateUsingReplay(gamma, batchSize)
+
+                epoch += 1
 
     def Test(self):
         raise NotImplementedError

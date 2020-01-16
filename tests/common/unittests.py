@@ -18,5 +18,8 @@ class TestVisualisation(unittest.TestCase):
         fig.savefig("test_PerformancePlot.png")
 
 
+# TODO: add test for memory
+#   - what happens if buffersize > items in queue?
+
 if __name__ == "__main__":
     unittest.main()
