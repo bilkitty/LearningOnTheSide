@@ -30,6 +30,8 @@ class EnvTypes:
     CartPoleEnv = "CartPole"
     AcroBotEnv = "Acrobot"
     MountainCarEnv = "MountainCar"
+    ContinuousMountainCarEnv = "ContinuousMountainCar"
+    ContinuousPendulumEnv = "ContinuousPendulum"
 
 
 def EnvWrapperFactory(envType, renderingMode=RENDERING_MODE):
@@ -43,6 +45,10 @@ def EnvWrapperFactory(envType, renderingMode=RENDERING_MODE):
         return AcrobotEnvWrapper(renderingMode)
     elif envType == EnvTypes.MountainCarEnv:
         return MountainCarEnvWrapper(renderingMode)
+    elif envType == EnvTypes.ContinuousMountainCarEnv:
+        return ContinuousMountainCarEnvWrapper(renderingMode)
+    elif envType == EnvTypes.ContinuousPendulumEnv:
+        return ContinuousPendulumEnvWrapper(renderingMode)
     else:
         raise NameError(f"Unsupported environment type '{envType}'")
 
@@ -54,25 +60,80 @@ class GymEnvWrapper:
         self.renderingMode = renderingMode
 
     def ActionSpaceN(self):
-        return self.env.action_space.n
+        if isinstance(self.env.action_space, type(gym.spaces.Discrete(1))):
+            return self.env.action_space.n
+        else:
+            return self.env.action_space.shape[0]
 
     def ObservationSpaceN(self):
-        return self.env.observation_space.shape[0]
+        if isinstance(self.env.observation_space, type(gym.spaces.Discrete(1))):
+            return self.env.observation_space.n
+        else:
+            return self.env.observation_space.shape[0]
 
     def Render(self):
-        self.env.render(self.renderingMode)
+        return self.env.render(self.renderingMode)
 
     def Reset(self):
-        self.env.reset()
+        return self.env.reset()
 
     def Step(self, action):
         return self.env.step(action)
 
     def Close(self):
-        self.env.close()
+        return self.env.close()
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         raise NotImplementedError
+
+
+"""
+ Pendulum
+ https://github.com/openai/gym/blob/master/gym/envs/classic_control/pendulum.py
+ 
+ Action Space
+    Continuous torque value as control input (internally bounded)
+    
+ Observation Space
+    Continuous angle and angular velocity
+"""
+
+
+class ContinuousPendulumEnvWrapper(GymEnvWrapper):
+
+    def __init__(self, renderingMode):
+        GymEnvWrapper.__init__(self, gym.make("Pendulum-v0"), renderingMode=renderingMode)
+
+    def ActionSpaceLabels(self, shouldUseShorthand=False):
+        # TODO: consider discretising for the purposes of plotting
+        return ["Continuous"]
+
+
+"""
+ Continuous mountain car
+ https://github.com/openai/gym/blob/master/gym/envs/classic_control/continuous_mountain_car.py
+ 
+ Action Space
+    Box(1)
+    Continuous force applied right (+?) or left (-?)  
+ 
+ Observation Space
+    Box(2)
+    Position and velocity of car
+    
+ A car sits in a valley with a flag on top of the right hill. The car must navigate towards the flag. The driver 
+ receives -1 reward for each time step. They receive +100 reward once the flag is reached.  
+"""
+
+
+class ContinuousMountainCarEnvWrapper(GymEnvWrapper):
+
+    def __init__(self, renderingMode):
+        GymEnvWrapper.__init__(self, gym.make("MountainCarContinuous-v0"), renderingMode=renderingMode)
+
+    def ActionSpaceLabels(self, shouldUseShorthand=False):
+        # TODO: consider discretising for the purposes of plotting
+        return ["Continuous"]
 
 
 """
@@ -81,9 +142,11 @@ class GymEnvWrapper:
  https://perma.cc/6Z2N-PFWC (sutton's code from '00)
  
  Action Space
-    Discrete actions 0) move left, 1) stop, 2) move right 
+    Discrete(3) 
+    actions 0) move left, 1) stop, 2) move right 
  
  Observation Space
+    Box(2) 
     position and velocity of the car (front and rear wheels?)
     
  NOTE:
@@ -111,10 +174,12 @@ class MountainCarEnvWrapper(GymEnvWrapper):
  https://github.com/openai/gym/blob/master/gym/envs/classic_control/acrobot.py
  
  Action Space
-    Discrete actions apply 0) pos, 1) none, 2) negative torque
+    Discrete(3) 
+    actions apply 0) pos, 1) none, 2) negative torque
  
  Observation Space
-    cos and sin of the two joint angles and joint velocities (starting with joint on rot axis)
+    Box(6)
+    cos of 2 joint angles, sin of 2 joint angles, and 2 joints velocities 
  
 """
 
@@ -139,9 +204,11 @@ class AcrobotEnvWrapper(GymEnvWrapper):
  horizontally along a track. 
  
  Action space
-    Discrete actions 0) push cart left or 1) push car right
+    Discrete(2) 
+    actions 0) push cart left or 1) push car right
  
  Observation space
+    Box(4)
     Position and velocity, respectively, of the cart and pole
 """
 
@@ -174,11 +241,13 @@ the taxi and a pickup (incorrectly) occurs, then the env only gives a time penal
 The agent receives reward of 20 for successfully dropping off the passenger.
 
 Action space
+    Discrete(6)
     There are six total possible actions. Obviously, only one action is taken at a time: 
     4 directions of movement + pickup + dropoff.
     
 
 Observation space
+    Discrete(500)
     There are 500 total possible states, including when the passenger is in the car: 
     5x5 grid positions x (4 + 1) passenger positions x 4 destinations 
     Really, each row is a summarization of the car's and passenger's possible position in the grid. It 
@@ -205,6 +274,14 @@ class TaxiGridEnvWrapper(GymEnvWrapper):
 
 """
  Windy grid world
+ 
+ Action Space
+    Discrete(4)
+    move up, right, down, left
+ 
+ Observation Space
+    Discrete(70)
+    grid position of agent
  
  A custom env...
 """
