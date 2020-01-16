@@ -1,8 +1,8 @@
 import sys, os
 
 from utils import *
-#from ddpg import DdpgAgent
-from qlearning import QLearningAgent
+from actorcritic.ddpg import DdpgAgent
+from qlearning.qlearning import QLearningAgent
 from environments import EnvTypes, EnvWrapperFactory
 from visualise import PlotPerformanceResults, SaveFigure
 

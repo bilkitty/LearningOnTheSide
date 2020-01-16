@@ -1,7 +1,6 @@
 import unittest
-import os
 from environments import EnvTypes, EnvWrapperFactory
-from ddpg import *
+from actorcritic.ddpg import *
 
 # Use this to toggle rendering AND console output
 VERBOSE = False

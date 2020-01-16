@@ -1,7 +1,13 @@
 data/
+algo/.idea
 algo/qlearning/__pycache__/
 algo/actorcritic/__pycache__/
 algo/policygradients/__pycache__/
-algo/qlearning/.idea
-algo/actorcritic/.idea
-algo/policygradients/.idea
+common/.idea
+common/__pycache__/
+gymrunner/.idea
+gymrunner/__pycache__/
+tests/.idea
+tests/algo/__pycache__/
+tests/common/__pycache__/
+tests/gymrunner/__pycache__/

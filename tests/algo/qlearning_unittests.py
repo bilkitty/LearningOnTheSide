@@ -1,39 +1,17 @@
+import os
 import unittest
 import utils
-import os
 from collections import defaultdict
-from qlearning import *
+from qlearning.qlearning import *
 from visualise import *
 from environments import EnvTypes, EnvWrapperFactory
 
 # Use this to toggle rendering AND console output
 VERBOSE = False
 I_TIMEOUT=100
-TEST_QTABLE_PKL = os.path.join(utils.GetScriptPath(), "data/test.pkl")
-TEST_METRICS_PKL = os.path.join(utils.GetScriptPath(), "data/mountaincar_metrics.pkl")
-#TEST_QTABLE_PKL = "data/test.pkl"
-#TEST_METRICS_PKL = "data/mountaincar_metrics.pkl"
+# TODO: set env variables for proj dir, test dir, etc.
+TEST_QTABLE_PKL = os.path.join(utils.GetScriptPath(), "../../data/test.pkl")
 QTABLE = utils.LoadFromPickle(TEST_QTABLE_PKL)
-MOCK_RESULTS = utils.LoadFromPickle(TEST_METRICS_PKL)
-
-# TODO: separate file for env creation tests (really need a separate proj)
-
-
-class TestEnvironmentCreation(unittest.TestCase):
-    def test_CreateWindyGrid(self):
-        self.assertNotEqual(EnvWrapperFactory(EnvTypes.WindyGridEnv), None)
-
-    def test_CreateTaxiGrid(self):
-        self.assertNotEqual(EnvWrapperFactory(EnvTypes.TaxiGridEnv), None)
-
-    def test_CreateCartPole(self):
-        self.assertNotEqual(EnvWrapperFactory(EnvTypes.CartPoleEnv), None)
-
-    def test_CreateAcroBot(self):
-        self.assertNotEqual(EnvWrapperFactory(EnvTypes.AcroBotEnv), None)
-
-    def test_CreateMountainCar(self):
-        self.assertNotEqual(EnvWrapperFactory(EnvTypes.MountainCarEnv), None)
 
 
 class TestQlearningSteps(unittest.TestCase):
@@ -114,14 +92,6 @@ class TestQlearningSteps(unittest.TestCase):
                 break
 
         self.assertNotEqual(a, abest)
-
-
-class TestVisualisation(unittest.TestCase):
-    def test_PerformancePlot(self):
-        env = EnvWrapperFactory(EnvTypes.MountainCarEnv, renderingMode="ansi")
-        fig = PlotPerformanceResults(MOCK_RESULTS, env.ActionSpaceLabels(shouldUseShorthand=True), "test mtn car")
-        self.assertTrue(fig.get_axes())
-        fig.savefig("test_PerformancePlot.png")
 
 
 if __name__ == "__main__":
