@@ -49,7 +49,7 @@ def main():
         return 0
     elif ALGO_TYPE.lower() == "qlearning":
         print(f"Q-learning it\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={MAX_EPOCHS}")
-        print(f"\n epsilon={EPSILON}\n  gamma={DISCOUNT_RATE}\n  alpha={LEARNING_RATE}\n")
+        print(f"\n  epsilon={EPSILON}\n  gamma={DISCOUNT_RATE}\n  alpha={LEARNING_RATE}\n")
         agent = QLearningAgent()
         agent.SetParameters(EPSILON, DISCOUNT_RATE, LEARNING_RATE, maxEpisodes, MAX_EPOCHS)
         policy = agent.CreatePolicyFunction()
