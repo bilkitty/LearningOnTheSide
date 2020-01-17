@@ -96,6 +96,11 @@ class GymEnvWrapper:
     
  Observation Space
     Continuous angle and angular velocity
+    
+ NOTE: strangely, step(action) takes an array whose values undergo thresholding.
+       Yoon's original agent.get_action(...) returns a scalar which causes error
+       when passed to np.clip(...).
+       https://docs.scipy.org/doc/numpy/reference/generated/numpy.clip.html
 """
 
 

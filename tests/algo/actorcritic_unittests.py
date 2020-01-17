@@ -5,11 +5,12 @@ from actorcritic.ddpg import *
 
 # Use this to toggle rendering AND console output
 VERBOSE = False
-I_TIMEOUT=100
-NN_HIDDEN_SIZE = 3
+I_TIMEOUT = 100
+NN_HIDDEN_SIZE = 1
 BATCH_SIZE = 127
 
 # TODO: how would this work with discrete envs?
+
 
 class TestDdpgComponents(unittest.TestCase):
 
@@ -33,9 +34,10 @@ class TestDdpgComponents(unittest.TestCase):
         self.assertTrue(ddpga.SetupOptimizers(actorLearningRate=1, criticLearningRate=1))
 
     def test_Train(self):
+        hiddenLayers = 1 # TODO: Why use single layer for compatibility with this env?
         env = EnvWrapperFactory(EnvTypes.ContinuousPendulumEnv)
         ddpga = DdpgAgent(maxMemorySize=1, maxEpisodes=1, maxEpochs=1)
-        ddpga.Train(env, 0.6, 1, NN_HIDDEN_SIZE, 1e-4, 1e-4, 1)
+        ddpga.Train(env, 0.6, 1, hiddenLayers, 1e-4, 1e-4, 1)
         env.Close()
 
 

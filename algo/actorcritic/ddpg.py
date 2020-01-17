@@ -26,7 +26,7 @@ class DdpgAgent:
         self.noiseProcess = None
         self.maxEpisodes = maxEpisodes
         self.maxEpochs = maxEpochs
-        self.lossFunction = lambda x, y: nn.MSELoss(x, y)
+        self.lossFunction = nn.MSELoss()
 
     def SetupNetworks(self, env, hiddenSize):
         assert(0 <= hiddenSize)
@@ -63,7 +63,7 @@ class DdpgAgent:
         action = self.actor.forward(state)
         action = action.detach().numpy()[0,0]
         # TODO: is this the best action? What specifically is this?
-        return action
+        return np.array([action])
 
     def UpdateUsingReplay(self, gamma, tau, batchSize):
         assert(0 <= gamma and gamma <= 1)
