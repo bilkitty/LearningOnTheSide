@@ -1,65 +1,12 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
 from torch.autograd import Variable
 
 from environments import *
 from memory import *
+from .nnModels import *
 
-# TODO: after reorg, undo qlearning dependence
-
-
-class Actor(nn.Module):
-    def __init__(self, num_states, num_actions, hidden_size, learning_rate=3e-4):
-        nn.Module.__init__(self)
-
-        self.num_actions = num_actions
-
-        self.linear1 = nn.Linear(num_states, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, num_actions)
-    
-    def forward(self, state):
-        """
-        args:
-            state       torch tensor    contains observed features
-        returns:
-                        torch tensor    action based on learnt policy
-        """
-        x = F.relu(self.linear1(state))
-        x = F.relu(self.linear2(x))
-        # TODO: Why is this a good choice?
-        action = torch.tanh(self.linear3(x))
-        #policyDistro = F.softmax(self.linear3(x), dim=1)
-
-        return action
-
-
-class Critic(nn.Module):
-    def __init__(self, num_states, num_actions, hidden_size, learning_rate=3e-4):
-        nn.Module.__init__(self)
-        self.linear1 = nn.Linear(num_states, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, num_actions)
-
-    def forward(self, state, action):
-        """
-        args:
-            state       torch tensor    contains observed features
-            action      torch tensor    contains action representation
-        returns:
-                        float           action value for state-action pair
-        """
-
-        stateAction = torch.cat([state, action], 1)
-        x = F.relu(self.linear1(stateAction))
-        x = F.relu(self.linear2(x))
-        value = self.linear3(x)
-
-        return value
-
-# TODO: memory buffer for action replay process
 # TODO: noise process for action exploration
 
 
@@ -82,6 +29,8 @@ class DdpgAgent:
         self.lossFunction = lambda x, y: nn.MSELoss(x, y)
 
     def SetupNetworks(self, env, hiddenSize):
+        assert(0 <= hiddenSize)
+
         numStates = env.ObservationSpaceN()
         numActions = env.ActionSpaceN()
         self.actor = Actor(numStates, hiddenSize, numActions)
@@ -99,6 +48,9 @@ class DdpgAgent:
         # TODO: init target network weights (copy of above)
 
     def SetupOptimizers(self, actorLearningRate, criticLearningRate):
+        assert(0 <= actorLearningRate)
+        assert(0 <= criticLearningRate)
+
         if self.actor and self.critic:
             self.actorOptimizer = torch.optim.Adam(self.actor.parameters(), lr=actorLearningRate)
             self.criticOptimizer = torch.optim.Adam(self.critic.parameters(), lr=criticLearningRate)
@@ -113,30 +65,53 @@ class DdpgAgent:
         # TODO: is this the best action? What specifically is this?
         return action
 
-    def UpdateUsingReplay(self, gamma, batchSize):
+    def UpdateUsingReplay(self, gamma, tau, batchSize):
+        assert(0 <= gamma and gamma <= 1)
+        assert(0 <= tau and tau <= 1)
+
         states, actions, rewards, nextStates, status = self.experiences.sample(batchSize)
 
-        # Create tensors from experience buffers
+        if len(states) == 0:
+            # Insufficient experience for sampling batch
+            return False
+
         states = torch.FloatTensor(states)
         actions = torch.FloatTensor(actions)
         rewards = torch.FloatTensor(rewards)
         nextStates = torch.FloatTensor(nextStates)
 
-        # TODO: update value network using mse loss btw learnt and target value
-        # Compute critic loss from batches
-        values = self.critic.forward(states, actions)
-        nextActions = self.actorTarget.forward(nextStates).detach()
-        targetValues = rewards + gamma * self.criticTarget.forward(nextStates, nextActions)
-        criticLoss = self.lossFunction(values, targetValues)
+        # Compute actor/critic losses from batches
+        learntActions = self.actor.forward(states)
+        learntValues = self.critic.forward(states, actions)
+        targetActions = self.actorTarget.forward(nextStates).detach()
+        targetValues = rewards + gamma * self.criticTarget.forward(nextStates, targetActions)
+        criticLoss = self.lossFunction(learntValues, targetValues)
+        actorLoss = self.critic.forward(states, learntActions)
+        # Use the average of all batched losses
+        actorLoss = -1 * actorLoss.mean()
 
-        # TODO: update policy network using sampled policy grad
+        # Run actor/critic optimizers
+        self.criticOptimizer.zero_grad()
+        self.actorOptimizer.zero_grad()
+        criticLoss.backward()
+        actorLoss.backward()
+        self.criticOptimizer.step()
+        self.actorOptimizer.step()
 
-        # TODO: update target network params as weighted avg of target and learnt params
+        # "soft" update: new target parameters as weighted average of learnt and target parameters
+        for targetParam, param in zip(self.actorTarget.parameters(), self.actor.parameters()):
+            targetParam.data.copy_((1 - tau) * targetParam.data + tau * param.data)
+        for targetParam, param in zip(self.criticTarget.parameters(), self.critic.parameters()):
+            targetParam.data.copy_((1 - tau) * targetParam.data + tau * param.data)
 
-    def Train(self, env, gamma, hiddenSize, actorLearningRate, criticLearningRate, batchSize):
+        return True
+
+    def Train(self, env, gamma, tau, hiddenSize, actorLearningRate, criticLearningRate, batchSize):
         # TODO: could create generic training function for all agents; a reason to mv args to ctor
         #       as a result, the caller could have better control over training, e.g., interrupt.
         gamma = min(max(0, gamma), 1)
+        tau = min(max(0, tau), 1)
+
         self.SetupNetworks(env, hiddenSize)
         self.SetupOptimizers(actorLearningRate, criticLearningRate)
 
@@ -148,11 +123,10 @@ class DdpgAgent:
             # TODO: initialize noise process
 
             while not done and epoch < self.maxEpochs:
-                action = self.GetAction(state) # TODO: add some noise
-
-                nextState, reward, done, _ = env.Step(action) # TODO: store in replay buffer: could we try spacing these out?
-
-                self.UpdateUsingReplay(gamma, batchSize)
+                action = self.GetAction(state)                                  # TODO: need to "normalize"? hmmm :/
+                nextState, reward, done, _ = env.Step(action)                   # TODO: add some noise to action
+                self.experiences.push(state, action, reward, nextState, done)   # TODO: [expmt] try spacing these out?
+                self.UpdateUsingReplay(gamma, tau, batchSize)
 
                 epoch += 1
 
