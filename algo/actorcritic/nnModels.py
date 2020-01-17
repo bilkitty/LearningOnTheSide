@@ -48,7 +48,8 @@ class Critic(nn.Module):
                         float           action value for state-action pair
         """
 
-        stateAction = torch.cat([state, action], 1)
+        # TODO: change dim based on whether single action/state were provided instead of multiple
+        stateAction = torch.cat([state, action], dim=1)
         x = F.relu(self.linear1(stateAction))
         x = F.relu(self.linear2(x))
         value = self.linear3(x)

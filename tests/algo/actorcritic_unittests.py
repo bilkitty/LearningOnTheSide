@@ -33,11 +33,18 @@ class TestDdpgComponents(unittest.TestCase):
         ddpga.SetupNetworks(EnvWrapperFactory(EnvTypes.ContinuousPendulumEnv), NN_HIDDEN_SIZE)
         self.assertTrue(ddpga.SetupOptimizers(actorLearningRate=1, criticLearningRate=1))
 
-    def test_Train(self):
+    def test_TrainOnPendulum(self):
         hiddenLayers = 1 # TODO: Why use single layer for compatibility with this env?
         env = EnvWrapperFactory(EnvTypes.ContinuousPendulumEnv)
-        ddpga = DdpgAgent(maxMemorySize=1, maxEpisodes=1, maxEpochs=1)
-        ddpga.Train(env, 0.6, 1, hiddenLayers, 1e-4, 1e-4, 1)
+        ddpga = DdpgAgent(maxMemorySize=1, maxEpisodes=I_TIMEOUT)
+        ddpga.Train(env, 0.6, 1, hiddenLayers, 1e-4, 1e-4, BATCH_SIZE)
+        env.Close()
+
+    def test_TrainOnMountainCar(self):
+        hiddenLayers = 1 # TODO: Why use single layer for compatibility with this env?
+        env = EnvWrapperFactory(EnvTypes.ContinuousMountainCarEnv)
+        ddpga = DdpgAgent(maxMemorySize=1, maxEpisodes=I_TIMEOUT)
+        ddpga.Train(env, 0.6, 1, hiddenLayers, 1e-4, 1e-4, BATCH_SIZE)
         env.Close()
 
 

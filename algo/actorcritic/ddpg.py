@@ -2,10 +2,13 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torch.autograd import Variable
+from timeit import default_timer as timer
 
 from environments import *
 from memory import *
+from metrics import *
 from .nnModels import *
+from utils import RefreshScreen
 
 # TODO: noise process for action exploration
 
@@ -62,7 +65,7 @@ class DdpgAgent:
         state = Variable(torch.from_numpy(state).float().unsqueeze(0))
         action = self.actor.forward(state)
         action = action.detach().numpy()[0,0]
-        # TODO: is this the best action? What specifically is this?
+        # TODO: is this the best action? What specifically is this? Also, use squeeze/unsqueeze?
         return np.array([action])
 
     def UpdateUsingReplay(self, gamma, tau, batchSize):
@@ -106,7 +109,7 @@ class DdpgAgent:
 
         return True
 
-    def Train(self, env, gamma, tau, hiddenSize, actorLearningRate, criticLearningRate, batchSize):
+    def Train(self, env, gamma, tau, hiddenSize, actorLearningRate, criticLearningRate, batchSize, verbose=True):
         # TODO: could create generic training function for all agents; a reason to mv args to ctor
         #       as a result, the caller could have better control over training, e.g., interrupt.
         gamma = min(max(0, gamma), 1)
@@ -115,13 +118,17 @@ class DdpgAgent:
         self.SetupNetworks(env, hiddenSize)
         self.SetupOptimizers(actorLearningRate, criticLearningRate)
 
+        episodicMetrics = []
+        globalStart = timer()
         for i in np.arange(self.maxEpisodes):
             epoch = 0
-            reward = 0
+            totalReward = 0
+            frames = []
             done = False
             state = env.Reset()
             # TODO: initialize noise process
 
+            start = timer()
             while not done and epoch < self.maxEpochs:
                 action = self.GetAction(state)                                  # TODO: need to "normalize"? hmmm :/
                 nextState, reward, done, _ = env.Step(action)                   # TODO: add some noise to action
@@ -129,6 +136,24 @@ class DdpgAgent:
                 self.UpdateUsingReplay(gamma, tau, batchSize)
 
                 epoch += 1
+                totalReward += reward
+                frames.append({
+                    'frame': env.Render(),
+                    'state': state,
+                    'action': action,
+                    'reward': reward})
+
+                if verbose and epoch % (self.maxEpochs / 1000) == 0:
+                    RefreshScreen(mode="human")
+                    s = torch.FloatTensor(state).unsqueeze(0)
+                    a = torch.FloatTensor(action).unsqueeze(0)
+                    qv = self.critic.forward(s, a).squeeze(0).detach().numpy()[0]
+                    print(f"Training\ne={i}\nr={reward: 0.2f}\nq={qv: .2f}")
+
+            metrics = Metrics(frames, epoch, timer() - start, totalReward, done)
+            episodicMetrics.append(metrics)
+
+        return timer() - globalStart
 
     def Test(self):
         raise NotImplementedError
