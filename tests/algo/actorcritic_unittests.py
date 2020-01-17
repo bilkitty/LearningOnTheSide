@@ -44,7 +44,9 @@ class TestDdpgComponents(unittest.TestCase):
         hiddenLayers = 1 # TODO: Why use single layer for compatibility with this env?
         env = EnvWrapperFactory(EnvTypes.ContinuousMountainCarEnv)
         ddpga = DdpgAgent(maxMemorySize=1, maxEpisodes=I_TIMEOUT)
-        ddpga.Train(env, 0.6, 1, hiddenLayers, 1e-4, 1e-4, BATCH_SIZE)
+        exetime = ddpga.Train(env, 0.6, 1, hiddenLayers, 1e-4, 1e-4, BATCH_SIZE)
+        print(f"Training time: {exetime}")
+
         env.Close()
 
 
