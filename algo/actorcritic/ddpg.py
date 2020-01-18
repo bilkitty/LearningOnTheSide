@@ -9,6 +9,7 @@ from memory import *
 from metrics import *
 from .nnModels import *
 from utils import RefreshScreen
+from noiseprocess import OUStrategy
 
 # TODO: noise process for action exploration
 
@@ -24,12 +25,11 @@ class DdpgAgent:
         self.criticTarget = None
         self.actorOptimizer = None
         self.criticOptimizer = None
-
-        self.experiences = Memory(maxMemorySize)
         self.noiseProcess = None
+        self.experiences = Memory(maxMemorySize)
+        self.lossFunction = nn.MSELoss()
         self.maxEpisodes = maxEpisodes
         self.maxEpochs = maxEpochs
-        self.lossFunction = nn.MSELoss()
 
     def SetupNetworks(self, env, hiddenSize):
         assert(0 <= hiddenSize)
@@ -61,11 +61,15 @@ class DdpgAgent:
         else:
             return False
 
+    def SetupNoiseProcess(self, env, mu=0, ):
+        self.noiseProcess = OUStrategy(env.action_space)
+
     def GetAction(self, state):
         state = Variable(torch.from_numpy(state).float().unsqueeze(0))
         action = self.actor.forward(state)
         action = action.detach().numpy()[0,0]
         # TODO: is this the best action? What specifically is this? Also, use squeeze/unsqueeze?
+        action = self.noiseProcess.get_action(action)
         return np.array([action])
 
     def UpdateUsingReplay(self, gamma, tau, batchSize):
@@ -109,6 +113,10 @@ class DdpgAgent:
 
         return True
 
+    def Update(self):
+        # TODO: call some version of update (like above)
+        return NotImplemented
+
     def Train(self, env, gamma, tau, hiddenSize, actorLearningRate, criticLearningRate, batchSize, verbose=True):
         # TODO: could create generic training function for all agents; a reason to mv args to ctor
         #       as a result, the caller could have better control over training, e.g., interrupt.
@@ -117,6 +125,7 @@ class DdpgAgent:
 
         self.SetupNetworks(env, hiddenSize)
         self.SetupOptimizers(actorLearningRate, criticLearningRate)
+        self.SetupNoiseProcess(env.env)
 
         episodicMetrics = []
         globalStart = timer()
@@ -131,6 +140,7 @@ class DdpgAgent:
             start = timer()
             while not done and epoch < self.maxEpochs:
                 action = self.GetAction(state)                                  # TODO: need to "normalize"? hmmm :/
+
                 nextState, reward, done, _ = env.Step(action)                   # TODO: add some noise to action
                 self.experiences.push(state, action, reward, nextState, done)   # TODO: [expmt] try spacing these out?
                 self.UpdateUsingReplay(gamma, tau, batchSize)
@@ -147,7 +157,7 @@ class DdpgAgent:
                     RefreshScreen(mode="human")
                     s = torch.FloatTensor(state).unsqueeze(0)
                     a = torch.FloatTensor(action).unsqueeze(0)
-                    qv = self.critic.forward(s, a).squeeze(0).detach().numpy()[0]
+                    qv = 0#self.critic.forward(s, a).squeeze(0).detach().numpy()[0]
                     print(f"Training\ne={i}\nr={reward: 0.2f}\nq={qv: .2f}")
 
             metrics = Metrics(frames, epoch, timer() - start, totalReward, done)

@@ -35,6 +35,16 @@ class QLearningAgent:
         self.qTable = None
         return
 
+    # TODO: get rid of train and test; supplant with getaction(), update(),...
+
+    def GetAction(self):
+        # TODO: return action based on state
+        return NotImplemented
+
+    def Update(self):
+        # TODO: return action based on state
+        return NotImplemented
+
     def Train(self, env, policy, verbose=False):
         """
         inputs:
