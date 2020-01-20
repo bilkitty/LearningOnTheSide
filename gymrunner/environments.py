@@ -11,7 +11,7 @@ if sys.version_info[0] == '2':
 else:
     from io import StringIO
 
-RENDERING_MODE = "human"
+RENDERING_MODE = "ansi"
 
 
 """

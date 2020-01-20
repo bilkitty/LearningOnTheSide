@@ -13,10 +13,12 @@ VERBOSE = True
 # TODO: python args or consider adding parameter file (prefer latter)
 MAX_EPISODES = 100000
 MAX_EPOCHS = 100000
-LEARNING_RATE = 0.6
-DISCOUNT_RATE = 0.1
+LEARNING_RATE = 0.1
+DISCOUNT_RATE = 0.6
 EPSILON = 0.1
-NN_HIDDEN_SIZE = 3
+# TODO: understand how this hidden size should be set. Seems env dependent (specifically, action space)
+NN_HIDDEN_SIZE = 1
+BATCH_SIZE = 64
 
 ENVS = [EnvTypes.WindyGridEnv, EnvTypes.TaxiGridEnv, EnvTypes.CartPoleEnv,
         EnvTypes.AcroBotEnv, EnvTypes.MountainCarEnv, EnvTypes.ContinuousPendulumEnv,
@@ -39,7 +41,7 @@ def main():
         if envIndex < 0 or len(ENVS) <= envIndex:
             print(f"Invalid env selected '{envIndex}'")
             return 1
-    if len(sys.argv) > 2:
+    if len(sys.argv) > 2 and sys.argv[2].isdigit():
         algoIndex = int(sys.argv[2])
         if algoIndex < 0 or len(ALGOS) <= algoIndex:
             print(f"Invalid algo selected '{algoIndex}'")
@@ -82,14 +84,16 @@ def main():
         # TODO: pipe in a2c
         print("nothing to see here...")
     elif algoType.lower() == "ddpg":
+        print(f"DDPG\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={MAX_EPOCHS}")
+        print(f"\n  hiddenLayerSize={NN_HIDDEN_SIZE}\n  gamma={DISCOUNT_RATE}\n  batchSize={BATCH_SIZE}")
         ddpga = DdpgAgent(maxMemorySize=64)
         resultsTrain, globalRuntime = ddpga.Train(env,
                                                   DISCOUNT_RATE,
-                                                  tau=0,
+                                                  tau=1,
                                                   hiddenSize=NN_HIDDEN_SIZE,
                                                   actorLearningRate=1e-4,
                                                   criticLearningRate=1e-4,
-                                                  batchSize=127,
+                                                  batchSize=BATCH_SIZE,
                                                   verbose=VERBOSE)
         print(f"Finished training: {globalRuntime: .4f}s")
         SaveAsPickle(resultsTrain, f"{algoType}_{ENVS[envIndex]}_train.pkl")

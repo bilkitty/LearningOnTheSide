@@ -49,7 +49,6 @@ class DdpgAgent:
             targetParam.data.copy_(param.data)
 
         # TODO: random actor/critic weight initialization (Javier?)
-        # TODO: init target network weights (copy of above)
 
     def SetupOptimizers(self, actorLearningRate, criticLearningRate):
         assert(0 <= actorLearningRate)
@@ -72,7 +71,7 @@ class DdpgAgent:
         # TODO: is this the best action? What specifically is this? Also, use squeeze/unsqueeze?
         if shouldAddNoise:
             action = self.noiseProcess.get_action(action)
-        return np.array([action])
+        return action
 
     def UpdateUsingReplay(self, gamma, tau, batchSize):
         assert(0 <= gamma and gamma <= 1)
