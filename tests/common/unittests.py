@@ -7,7 +7,7 @@ from environments import EnvTypes, EnvWrapperFactory
 from noiseprocess import OUStrategy
 
 # TODO: set env variables for proj dir, test dir, etc.
-TEST_METRICS_PKL = os.path.join(utils.GetScriptPath(), "../data/mountaincar_metrics.pkl")
+TEST_METRICS_PKL = os.path.join(utils.GetRootProjectPath(), "tests/data/mountaincar_metrics.pkl")
 MOCK_RESULTS = Metrics.LoadMetricsFromPickle(TEST_METRICS_PKL)
 
 

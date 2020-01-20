@@ -11,7 +11,8 @@ from .nnModels import *
 from utils import RefreshScreen
 from noiseprocess import OUStrategy
 
-# TODO: noise process for action exploration
+# TODO: this version of ddpg only supports continuous envs. The interpretation of action space needs to be compatible
+#       with Discrete and Box types. -_-
 
 
 class DdpgAgent:
@@ -64,12 +65,13 @@ class DdpgAgent:
     def SetupNoiseProcess(self, env, mu=0, ):
         self.noiseProcess = OUStrategy(env.action_space)
 
-    def GetAction(self, state):
+    def GetAction(self, state, shouldAddNoise=True):
         state = Variable(torch.from_numpy(state).float().unsqueeze(0))
         action = self.actor.forward(state)
         action = action.detach().numpy()[0,0]
         # TODO: is this the best action? What specifically is this? Also, use squeeze/unsqueeze?
-        action = self.noiseProcess.get_action(action)
+        if shouldAddNoise:
+            action = self.noiseProcess.get_action(action)
         return np.array([action])
 
     def UpdateUsingReplay(self, gamma, tau, batchSize):
@@ -135,13 +137,11 @@ class DdpgAgent:
             frames = []
             done = False
             state = env.Reset()
-            # TODO: initialize noise process
-
             start = timer()
             while not done and epoch < self.maxEpochs:
                 action = self.GetAction(state)                                  # TODO: need to "normalize"? hmmm :/
 
-                nextState, reward, done, _ = env.Step(action)                   # TODO: add some noise to action
+                nextState, reward, done, _ = env.Step(action)
                 self.experiences.push(state, action, reward, nextState, done)   # TODO: [expmt] try spacing these out?
                 self.UpdateUsingReplay(gamma, tau, batchSize)
 
@@ -157,13 +157,44 @@ class DdpgAgent:
                     RefreshScreen(mode="human")
                     s = torch.FloatTensor(state).unsqueeze(0)
                     a = torch.FloatTensor(action).unsqueeze(0)
-                    qv = 0#self.critic.forward(s, a).squeeze(0).detach().numpy()[0]
-                    print(f"Training\ne={i}\nr={reward: 0.2f}\nq={qv: .2f}")
+                    qv = 0 #self.critic.forward(s, a).detach().squeeze(0).numpy()[0]
+                    print(f"Training\ne={i}\nr={np.max(reward): 0.2f}\nq={qv: .2f}")
 
             metrics = Metrics(frames, epoch, timer() - start, totalReward, done)
             episodicMetrics.append(metrics)
 
         return episodicMetrics, timer() - globalStart
 
-    def Test(self):
-        raise NotImplementedError
+    def Test(self, env, verbose):
+        episodicMetrics = []
+        globalStart = timer()
+        for i in np.arange(self.maxEpisodes):
+            epoch = 0
+            totalReward = 0
+            frames = []
+            done = False
+            state = env.Reset()
+            start = timer()
+            while not done and epoch < self.maxEpochs:
+                action = self.GetAction(state)                                  # TODO: need to "normalize"? hmmm :/
+                nextState, reward, done, _ = env.Step(action)
+
+                epoch += 1
+                totalReward += reward
+                frames.append({
+                    'frame': env.Render(),
+                    'state': state,
+                    'action': action,
+                    'reward': reward})
+
+                if verbose and epoch % (self.maxEpochs / 1000) == 0:
+                    RefreshScreen(mode="human")
+                    s = torch.FloatTensor(state).unsqueeze(0)
+                    a = torch.FloatTensor(action).unsqueeze(0)
+                    qv = 0
+                    print(f"Testing\ne={i}\nr={np.max(reward): 0.2f}\nq={qv: .2f}")
+
+            metrics = Metrics(frames, epoch, timer() - start, totalReward, done)
+            episodicMetrics.append(metrics)
+
+        return episodicMetrics, timer() - globalStart

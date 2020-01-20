@@ -7,7 +7,9 @@ $TESTDIR=$PROJDIR/test
 
 
 Append to ~/.bashrc
-  export PYTHONPATH="$PYTHONPATH:$PROJDIR/common:$PROJDIR/algo:$PROJDIR/gymrunner"
+
+export PROJECT_ROOT_PATH="/home/bilkit/Workspace/ModelFreeLearning"
+export PYTHONPATH=$PYTHONPATH:"$(openrave-config --python-dir):${PROJECT_ROOT_PATH}/algo:${PROJECT_ROOT_PATH}/common:${PROJECT_ROOT_PATH}/gymrunner"
 
 $ source ~/.bashrc
 

@@ -6,6 +6,10 @@ def GetScriptPath():
     return os.path.dirname(os.path.realpath(sys.argv[0]))
 
 
+def GetRootProjectPath():
+    return os.environ["PROJECT_ROOT_PATH"]
+
+
 def GetMaxFloat():
     return float("inf")
 

@@ -8,10 +8,9 @@ from visualise import PlotPerformanceResults, SaveFigure
 
 SHOULD_REUSE_QTABLE = False
 SHOULD_PLOT = True
-VERBOSE = False
+VERBOSE = True
 
 # TODO: python args or consider adding parameter file (prefer latter)
-ALGO_TYPE = "qlearning"
 MAX_EPISODES = 100000
 MAX_EPOCHS = 100000
 LEARNING_RATE = 0.6
@@ -23,6 +22,8 @@ ENVS = [EnvTypes.WindyGridEnv, EnvTypes.TaxiGridEnv, EnvTypes.CartPoleEnv,
         EnvTypes.AcroBotEnv, EnvTypes.MountainCarEnv, EnvTypes.ContinuousPendulumEnv,
         EnvTypes.ContinuousMountainCarEnv]
 
+ALGOS = ["qlearning", "ddpg"]
+
 
 def main():
     """
@@ -31,6 +32,7 @@ def main():
     but also be friendly for visualization.
     """
     envIndex = 0
+    algoIndex = 0
     maxEpisodes = MAX_EPISODES
     if len(sys.argv) > 1 and sys.argv[1].isdigit():
         envIndex = int(sys.argv[1])
@@ -38,17 +40,23 @@ def main():
             print(f"Invalid env selected '{envIndex}'")
             return 1
     if len(sys.argv) > 2:
-        maxEpisodes = int(sys.argv[2])
+        algoIndex = int(sys.argv[2])
+        if algoIndex < 0 or len(ALGOS) <= algoIndex:
+            print(f"Invalid algo selected '{algoIndex}'")
+            return 1
+    if len(sys.argv) > 3:
+        maxEpisodes = int(sys.argv[3])
 
+    algoType = ALGOS[algoIndex]
     env = EnvWrapperFactory(ENVS[envIndex])
     env.Reset()
 
     qTableFile = f"{ENVS[envIndex]}_qtable.pkl"
-    if ALGO_TYPE.lower() == "bruteforce":
+    if algoType.lower() == "bruteforce":
         print("Bruteforcing it")
         print("Finished search")
         return 0
-    elif ALGO_TYPE.lower() == "qlearning":
+    elif algoType.lower() == "qlearning":
         print(f"Q-learning it\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={MAX_EPOCHS}")
         print(f"\n  epsilon={EPSILON}\n  gamma={DISCOUNT_RATE}\n  alpha={LEARNING_RATE}\n")
         agent = QLearningAgent()
@@ -64,18 +72,32 @@ def main():
             resultsTrain, globalRuntime = agent.Train(env, policy, verbose=VERBOSE)
             qTable = agent.QValues()
             SaveAsPickle(qTable, qTableFile)
-            SaveAsPickle(resultsTrain, f"{ENVS[envIndex]}_train.pkl")
+            SaveAsPickle(resultsTrain, f"{algoType}_{ENVS[envIndex]}_train.pkl")
             print(f"Finished training: {globalRuntime: .4f}s")
             resultsTest, globalRuntime = agent.Evaluate(env, verbose=VERBOSE)
 
-        SaveAsPickle(resultsTest, f"{ENVS[envIndex]}_test.pkl")
+        SaveAsPickle(resultsTest, f"{algoType}_{ENVS[envIndex]}_test.pkl")
         print(f"Finished evaluation: {globalRuntime: .4f}s")
-    elif ALGO_TYPE.lower() == "ddpg":
-        ddpga = DdpgAgent(maxMemorySize=64)
-        ddpga.Train(env, DISCOUNT_RATE)
+    elif algoType.lower() == "a2c":
+        # TODO: pipe in a2c
         print("nothing to see here...")
+    elif algoType.lower() == "ddpg":
+        ddpga = DdpgAgent(maxMemorySize=64)
+        resultsTrain, globalRuntime = ddpga.Train(env,
+                                                  DISCOUNT_RATE,
+                                                  tau=0,
+                                                  hiddenSize=NN_HIDDEN_SIZE,
+                                                  actorLearningRate=1e-4,
+                                                  criticLearningRate=1e-4,
+                                                  batchSize=127,
+                                                  verbose=VERBOSE)
+        print(f"Finished training: {globalRuntime: .4f}s")
+        SaveAsPickle(resultsTrain, f"{algoType}_{ENVS[envIndex]}_train.pkl")
+        resultsTest, globalRuntime = ddpga.Test(env, verbose=VERBOSE)
+        print(f"Finished testing: {globalRuntime: .4f}s")
+        SaveAsPickle(resultsTest, f"{algoType}_{ENVS[envIndex]}_test.pkl")
     else:
-        print(f"Unsupported algo type '{ALGO_TYPE}'")
+        print(f"Unsupported algo type '{algoType}'")
         return 1
 
     # Good practice to close env when finished :)
@@ -85,8 +107,8 @@ def main():
         return 0
 
     figs = []
-    figs.append(PlotPerformanceResults(resultsTrain, env.ActionSpaceLabels(shouldUseShorthand=True), f"{ENVS[envIndex]} training results"))
-    figs.append(PlotPerformanceResults(resultsTest, env.ActionSpaceLabels(shouldUseShorthand=True), f"{ENVS[envIndex]} test results"))
+    figs.append(PlotPerformanceResults(resultsTrain, env.ActionSpaceLabels(shouldUseShorthand=True), f"{algoType}_{ENVS[envIndex]} training results"))
+    figs.append(PlotPerformanceResults(resultsTest, env.ActionSpaceLabels(shouldUseShorthand=True), f"{algoType}_{ENVS[envIndex]} test results"))
 
     for f in figs:
         SaveFigure(f)

@@ -9,9 +9,10 @@ from environments import EnvTypes, EnvWrapperFactory
 # Use this to toggle rendering AND console output
 VERBOSE = False
 I_TIMEOUT=100
-# TODO: set env variables for proj dir, test dir, etc.
-TEST_QTABLE_PKL = os.path.join(utils.GetScriptPath(), "../../data/test.pkl")
+TEST_QTABLE_PKL = os.path.join(utils.GetRootProjectPath(), "tests/data/qtable.pkl")
 QTABLE = utils.LoadFromPickle(TEST_QTABLE_PKL)
+
+#TODO: keep track of instantiated environments and ensure they are closed before exiting in tearDown()
 
 
 class TestQlearningSteps(unittest.TestCase):

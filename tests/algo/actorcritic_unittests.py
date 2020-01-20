@@ -5,9 +5,12 @@ from actorcritic.ddpg import *
 
 # Use this to toggle rendering AND console output
 VERBOSE = False
-I_TIMEOUT = 100
+RENDERING_MODE = "ansi"
+I_TIMEOUT = 5
 NN_HIDDEN_SIZE = 1
 BATCH_SIZE = 127
+
+#TODO: keep track of instantiated environments and ensure they are closed before exiting in tearDown()
 
 # TODO: how would this work with discrete envs?
 
@@ -15,7 +18,7 @@ BATCH_SIZE = 127
 class TestDdpgComponents(unittest.TestCase):
 
     def test_SetupNetworks(self):
-        env = EnvWrapperFactory(EnvTypes.ContinuousPendulumEnv)
+        env = EnvWrapperFactory(EnvTypes.ContinuousPendulumEnv, renderingMode=RENDERING_MODE)
         ddpga = DdpgAgent(maxMemorySize=1)
         ddpga.SetupNetworks(env, NN_HIDDEN_SIZE)
         self.assertIsNotNone(ddpga.actor)
@@ -29,20 +32,21 @@ class TestDdpgComponents(unittest.TestCase):
 
     def test_SetOptimizers(self):
         ddpga = DdpgAgent(maxMemorySize=1)
+        env = EnvWrapperFactory(EnvTypes.ContinuousPendulumEnv, renderingMode=RENDERING_MODE)
         self.assertFalse(ddpga.SetupOptimizers(actorLearningRate=1, criticLearningRate=1))
-        ddpga.SetupNetworks(EnvWrapperFactory(EnvTypes.ContinuousPendulumEnv), NN_HIDDEN_SIZE)
+        ddpga.SetupNetworks(env, NN_HIDDEN_SIZE)
         self.assertTrue(ddpga.SetupOptimizers(actorLearningRate=1, criticLearningRate=1))
 
     def test_TrainOnPendulum(self):
         hiddenLayers = 1 # TODO: Why use single layer for compatibility with this env?
-        env = EnvWrapperFactory(EnvTypes.ContinuousPendulumEnv)
+        env = EnvWrapperFactory(EnvTypes.ContinuousPendulumEnv, renderingMode=RENDERING_MODE)
         ddpga = DdpgAgent(maxMemorySize=1, maxEpisodes=I_TIMEOUT)
         ddpga.Train(env, 0.6, 1, hiddenLayers, 1e-4, 1e-4, BATCH_SIZE)
         env.Close()
 
     def test_TrainOnMountainCar(self):
         hiddenLayers = 1 # TODO: Why use single layer for compatibility with this env?
-        env = EnvWrapperFactory(EnvTypes.ContinuousMountainCarEnv)
+        env = EnvWrapperFactory(EnvTypes.ContinuousMountainCarEnv, renderingMode=RENDERING_MODE)
         ddpga = DdpgAgent(maxMemorySize=1, maxEpisodes=I_TIMEOUT)
         exetime = ddpga.Train(env, 0.6, 1, hiddenLayers, 1e-4, 1e-4, BATCH_SIZE)
         print(f"Training time: {exetime}")
