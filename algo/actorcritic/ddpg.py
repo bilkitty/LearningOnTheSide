@@ -163,7 +163,7 @@ class DdpgAgent:
             metrics = Metrics(frames, epoch, timer() - start, totalReward, done)
             episodicMetrics.append(metrics)
 
-        return timer() - globalStart
+        return episodicMetrics, timer() - globalStart
 
     def Test(self):
         raise NotImplementedError

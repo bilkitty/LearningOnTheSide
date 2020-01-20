@@ -20,7 +20,8 @@ EPSILON = 0.1
 NN_HIDDEN_SIZE = 3
 
 ENVS = [EnvTypes.WindyGridEnv, EnvTypes.TaxiGridEnv, EnvTypes.CartPoleEnv,
-        EnvTypes.AcroBotEnv, EnvTypes.MountainCarEnv]
+        EnvTypes.AcroBotEnv, EnvTypes.MountainCarEnv, EnvTypes.ContinuousPendulumEnv,
+        EnvTypes.ContinuousMountainCarEnv]
 
 
 def main():
@@ -70,7 +71,8 @@ def main():
         SaveAsPickle(resultsTest, f"{ENVS[envIndex]}_test.pkl")
         print(f"Finished evaluation: {globalRuntime: .4f}s")
     elif ALGO_TYPE.lower() == "ddpg":
-        #agent = DdpgAgent(env, NN_HIDDEN_SIZE)
+        ddpga = DdpgAgent(maxMemorySize=64)
+        ddpga.Train(env, DISCOUNT_RATE)
         print("nothing to see here...")
     else:
         print(f"Unsupported algo type '{ALGO_TYPE}'")
