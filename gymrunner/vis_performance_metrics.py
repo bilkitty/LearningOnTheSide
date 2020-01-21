@@ -8,14 +8,22 @@ from visualise import PlotPerformanceResults, SaveFigure
 
 
 def main():
-    env = EnvWrapperFactory(EnvTypes.TaxiGridEnv)
+    xmax = 500
+    algo = "ddpg"
+    env = EnvWrapperFactory(EnvTypes.ContinuousPendulumEnv)
 
-    resultsTrain = LoadFromPickle("train.pkl")
-    resultsTest = LoadFromPickle("eval.pkl")
+    resultsTrain = LoadFromPickle(f"{algo}_{EnvTypes.ContinuousPendulumEnv}_train.pkl")
+    resultsTest = LoadFromPickle(f"{algo}_{EnvTypes.ContinuousPendulumEnv}_test.pkl")
 
     figs = []
-    figs.append(PlotPerformanceResults(resultsTrain, env.ActionSpaceLabels(), "training taxi", xMax=1000))
-    figs.append(PlotPerformanceResults(resultsTest, env.ActionSpaceLabels(), "test taxi", xMax=1000))
+    figs.append(PlotPerformanceResults(resultsTrain,
+                                       env.ActionSpaceLabels(),
+                                       f"training {EnvTypes.ContinuousPendulumEnv}",
+                                       xMax=xmax))
+    figs.append(PlotPerformanceResults(resultsTest,
+                                       env.ActionSpaceLabels(),
+                                       f"test {EnvTypes.ContinuousPendulumEnv}",
+                                       xMax=xmax))
 
     for f in figs:
         SaveFigure(f)

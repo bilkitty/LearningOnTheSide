@@ -28,14 +28,11 @@ def PlotPerformanceResults(agentMetrics, actionLabels, name, xMax=GetMaxFloat())
     episodeCount = min(xMax, len(agentMetrics))
     rewards = np.array([x.totalReward for x in agentMetrics][:episodeCount])
     durations = np.array([x.epochCount for x in agentMetrics][:episodeCount])
-    actionCounts = np.array([x.actionCounts for x in agentMetrics][:episodeCount])
-    assert len(actionCounts[0]) == len(actionLabels), "mismatch between # actions and action labels"
     # Subsample for prettier plots
     plotSampleFreq = episodeCount // min(PLOT_SAMPLE_COUNT, episodeCount)
     actionPlotSampleFreq = episodeCount // min(PLOT_SAMPLE_COUNT // 10, episodeCount)
     rewards = rewards[::plotSampleFreq]
     durations = durations[::plotSampleFreq]
-    actionCounts = actionCounts[::actionPlotSampleFreq]
     # Also grab smoothed metrics
     avgRewardsSmoothed = pd.Series(rewards).rolling(SMOOTHING_WINDOW, min_periods=SMOOTHING_WINDOW).mean()
     stdRewardsSmoothed = pd.Series(rewards).rolling(SMOOTHING_WINDOW, min_periods=SMOOTHING_WINDOW).std()
@@ -54,16 +51,20 @@ def PlotPerformanceResults(agentMetrics, actionLabels, name, xMax=GetMaxFloat())
     ax1.set_xlim(0, episodeCount)
     ax1.set_xlabel("episode")
     ax1.set_ylabel("total epochs")
-    ax2 = plt.subplot(313)
-    for i, label in enumerate(actionLabels):
-        ax2.plot(np.linspace(0, episodeCount, episodeCount // actionPlotSampleFreq),
-                 actionCounts[:, i],
-                 label=label,
-                 linewidth=2)
-    ax2.set_xlim(0, episodeCount)
-    ax2.set_xlabel("episode")
-    ax2.set_ylabel("action count")
-    ax2.legend()
+    actionCounts = np.array([x.actionCounts for x in agentMetrics][:episodeCount])
+    if len(actionCounts[0]) > 0:
+        assert len(actionCounts[0]) == len(actionLabels)
+        actionCounts = actionCounts[::actionPlotSampleFreq]
+        ax2 = plt.subplot(313)
+        for i, label in enumerate(actionLabels):
+            ax2.plot(np.linspace(0, episodeCount, episodeCount // actionPlotSampleFreq),
+                     actionCounts[:, i],
+                     label=label,
+                     linewidth=2)
+        ax2.set_xlim(0, episodeCount)
+        ax2.set_xlabel("episode")
+        ax2.set_ylabel("action count")
+        ax2.legend()
     plt.close(fig)
     return fig
 

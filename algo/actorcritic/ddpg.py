@@ -37,10 +37,10 @@ class DdpgAgent:
 
         numStates = env.ObservationSpaceN()
         numActions = env.ActionSpaceN()
-        self.actor = Actor(numStates, hiddenSize, numActions)
-        self.actorTarget = Actor(numStates, hiddenSize, numActions)
-        self.critic = Critic(numStates + numActions, hiddenSize, numActions)
-        self.criticTarget = Critic(numStates + numActions, hiddenSize, numActions)
+        self.actor = Actor(input_size=numStates, output_size=numActions, hidden_size=hiddenSize)
+        self.actorTarget = Actor(input_size=numStates, output_size=numActions, hidden_size=hiddenSize)
+        self.critic = Critic(input_size=numStates + numActions, output_size=1, hidden_size=hiddenSize)
+        self.criticTarget = Critic(input_size=numStates + numActions, output_size=1, hidden_size=hiddenSize)
 
         # We initialize the target networks as copies of the original networks
         for targetParam, param in zip(self.actorTarget.parameters(), self.actor.parameters()):
@@ -61,16 +61,16 @@ class DdpgAgent:
         else:
             return False
 
-    def SetupNoiseProcess(self, env, mu=0, ):
-        self.noiseProcess = OUStrategy(env.action_space)
+    def SetupNoiseProcess(self, env, mu=0):
+        self.noiseProcess = OUStrategy(env.action_space, mu)
 
-    def GetAction(self, state, shouldAddNoise=True):
+    def GetAction(self, state, offset, shouldAddNoise=True):
         state = Variable(torch.from_numpy(state).float().unsqueeze(0))
         action = self.actor.forward(state)
         action = action.detach().numpy()[0,0]
         # TODO: is this the best action? What specifically is this? Also, use squeeze/unsqueeze?
         if shouldAddNoise:
-            action = self.noiseProcess.get_action(action)
+            action = self.noiseProcess.get_action(action, offset)
         return action
 
     def UpdateUsingReplay(self, gamma, tau, batchSize):
@@ -119,6 +119,18 @@ class DdpgAgent:
         return NotImplemented
 
     def Train(self, env, gamma, tau, hiddenSize, actorLearningRate, criticLearningRate, batchSize, verbose=True):
+        """
+        args:
+            env     envwrapper  a wrapper containing gym environment
+            gamma   float       reward discount rate
+            tau     float       soft update rate for target networks
+            hSize   int         width of all hidden layers
+            alRate  float       learning rate for actor optimization
+            clRate  float       learning rate for critic optimization
+            bSize   int         sample size for updates using replay
+
+        """
+
         # TODO: could create generic training function for all agents; a reason to mv args to ctor
         #       as a result, the caller could have better control over training, e.g., interrupt.
         gamma = min(max(0, gamma), 1)
@@ -138,7 +150,7 @@ class DdpgAgent:
             state = env.Reset()
             start = timer()
             while not done and epoch < self.maxEpochs:
-                action = self.GetAction(state)                                  # TODO: need to "normalize"? hmmm :/
+                action = self.GetAction(state, epoch)                           # TODO: need to "normalize"? hmmm :/
 
                 nextState, reward, done, _ = env.Step(action)
                 self.experiences.push(state, action, reward, nextState, done)   # TODO: [expmt] try spacing these out?
@@ -175,7 +187,7 @@ class DdpgAgent:
             state = env.Reset()
             start = timer()
             while not done and epoch < self.maxEpochs:
-                action = self.GetAction(state)                                  # TODO: need to "normalize"? hmmm :/
+                action = self.GetAction(state, epoch)                           # TODO: need to "normalize"? hmmm :/
                 nextState, reward, done, _ = env.Step(action)
 
                 epoch += 1

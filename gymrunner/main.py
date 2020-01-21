@@ -8,7 +8,7 @@ from visualise import PlotPerformanceResults, SaveFigure
 
 SHOULD_REUSE_QTABLE = False
 SHOULD_PLOT = True
-VERBOSE = True
+VERBOSE = False
 
 # TODO: python args or consider adding parameter file (prefer latter)
 MAX_EPISODES = 100000
@@ -18,7 +18,7 @@ DISCOUNT_RATE = 0.6
 EPSILON = 0.1
 # TODO: understand how this hidden size should be set. Seems env dependent (specifically, action space)
 NN_HIDDEN_SIZE = 1
-BATCH_SIZE = 64
+BATCH_SIZE = 128
 
 ENVS = [EnvTypes.WindyGridEnv, EnvTypes.TaxiGridEnv, EnvTypes.CartPoleEnv,
         EnvTypes.AcroBotEnv, EnvTypes.MountainCarEnv, EnvTypes.ContinuousPendulumEnv,
@@ -84,16 +84,21 @@ def main():
         # TODO: pipe in a2c
         print("nothing to see here...")
     elif algoType.lower() == "ddpg":
-        print(f"DDPG\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={MAX_EPOCHS}")
-        print(f"\n  hiddenLayerSize={NN_HIDDEN_SIZE}\n  gamma={DISCOUNT_RATE}\n  batchSize={BATCH_SIZE}")
-        ddpga = DdpgAgent(maxMemorySize=64)
+        discountRate = 0.9
+        hiddenSize = 128
+        batchSize = 128
+        memoryRate = 1e-2
+        maxEpochs = 500 if ENVS[envIndex] == EnvTypes.ContinuousPendulumEnv else MAX_EPOCHS
+        print(f"DDPG\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}")
+        print(f"\n  hiddenLayerSize={hiddenSize}\n  gamma={discountRate}\n  batchSize={batchSize}")
+        ddpga = DdpgAgent(maxMemorySize=5000, maxEpisodes=maxEpisodes, maxEpochs=maxEpochs)
         resultsTrain, globalRuntime = ddpga.Train(env,
-                                                  DISCOUNT_RATE,
-                                                  tau=1,
-                                                  hiddenSize=NN_HIDDEN_SIZE,
+                                                  gamma=discountRate,
+                                                  tau=memoryRate,
+                                                  hiddenSize=hiddenSize,
                                                   actorLearningRate=1e-4,
                                                   criticLearningRate=1e-4,
-                                                  batchSize=BATCH_SIZE,
+                                                  batchSize=batchSize,
                                                   verbose=VERBOSE)
         print(f"Finished training: {globalRuntime: .4f}s")
         SaveAsPickle(resultsTrain, f"{algoType}_{ENVS[envIndex]}_train.pkl")

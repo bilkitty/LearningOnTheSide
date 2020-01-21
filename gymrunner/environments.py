@@ -110,8 +110,7 @@ class ContinuousPendulumEnvWrapper(GymEnvWrapper):
         GymEnvWrapper.__init__(self, gym.make("Pendulum-v0"), renderingMode=renderingMode)
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
-        # TODO: consider discretising for the purposes of plotting
-        return ["Continuous"]
+        return ["torque"]
 
 
 """
@@ -137,8 +136,7 @@ class ContinuousMountainCarEnvWrapper(GymEnvWrapper):
         GymEnvWrapper.__init__(self, gym.make("MountainCarContinuous-v0"), renderingMode=renderingMode)
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
-        # TODO: consider discretising for the purposes of plotting
-        return ["Continuous"]
+        return ["force"]
 
 
 """

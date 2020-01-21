@@ -4,14 +4,17 @@ import torch.nn.functional as F
 
 
 class Actor(nn.Module):
-    def __init__(self, num_states, num_actions, hidden_size, learning_rate=3e-4):
+    # TODO: is this architecture specific to ddpg?
+    def __init__(self, input_size, output_size, hidden_size):
+        """
+        args:
+            input_size  int             state space dims (for this application)
+            output_size int             action space dims (for this application)
+        """
         nn.Module.__init__(self)
-
-        self.num_actions = num_actions
-
-        self.linear1 = nn.Linear(num_states, hidden_size)
+        self.linear1 = nn.Linear(input_size, hidden_size)
         self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, num_actions)
+        self.linear3 = nn.Linear(hidden_size, output_size)
 
     def forward(self, state):
         """
@@ -20,6 +23,7 @@ class Actor(nn.Module):
         returns:
                         torch tensor    action based on learnt policy
         """
+
         x = F.relu(self.linear1(state))
         x = F.relu(self.linear2(x))
         # TODO: Why is this a good choice?
@@ -33,11 +37,17 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    def __init__(self, num_states, num_actions, hidden_size, learning_rate=3e-4):
+    # TODO: is this architecture specific to ddpg?
+    def __init__(self, input_size, output_size, hidden_size):
+        """
+        args:
+            input_size  int             sum of state space and action space dims (for this application)
+            output_size int             action space dims (for this application)
+        """
         nn.Module.__init__(self)
-        self.linear1 = nn.Linear(num_states, hidden_size)
+        self.linear1 = nn.Linear(input_size, hidden_size)
         self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, num_actions)
+        self.linear3 = nn.Linear(hidden_size, output_size)
 
     def forward(self, state, action):
         """
