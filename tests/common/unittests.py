@@ -9,7 +9,7 @@ from baseargs import BaseArgsParser
 
 # TODO: set env variables for proj dir, test dir, etc.
 TEST_METRICS_PKL = os.path.join(utils.GetRootProjectPath(), "tests/data/mountaincar_metrics.pkl")
-TEST_ARGS_JSON = os.path.join(utils.GetRootProjectPath(), "tests/data/tes.parser.json")
+TEST_ARGS_JSON = os.path.join(utils.GetRootProjectPath(), "tests/data/testargs.json")
 MOCK_ARGS_JSON = "{\"arg0\": 1, \"arg1\": 42.4242, \"arg3\": \"type0\"}"
 MOCK_RESULTS = Metrics.LoadMetricsFromPickle(TEST_METRICS_PKL)
 
@@ -45,10 +45,13 @@ class TestArgsParser(unittest.TestCase):
     def setUp(self):
         self.parser = BaseArgsParser("test args")
 
-    def test_cmdlnParser(self):
-        argList = self.parser.GetCmdlnArgs()
+    def test_parseArgs(self):
+        args = self.parser.ParseArgs(TEST_ARGS_JSON)
+        self.assertIsNotNone(args.arg0)
+        self.assertIsNotNone(args.arg1)
+        self.assertIsNotNone(args.envIndex)
 
-    def test_jsonParser(self):
+    def test_getJsonArgs(self):
         argDict = self.parser.GetJsonArgs(TEST_ARGS_JSON)
         self.assertEqual(argDict["arg0"], 1)
         self.assertEqual(argDict["arg1"], 42.4242)

@@ -20,6 +20,7 @@ EPSILON = 0.1
 NN_HIDDEN_SIZE = 1
 BATCH_SIZE = 128
 PARAM_FILE = os.path.join(GetRootProjectPath(), "gymrunner/params.json")
+POSTFIX = "no_action_noise_offset"
 
 ENVS = [EnvTypes.WindyGridEnv, EnvTypes.TaxiGridEnv, EnvTypes.CartPoleEnv,
         EnvTypes.AcroBotEnv, EnvTypes.MountainCarEnv, EnvTypes.ContinuousPendulumEnv,
@@ -35,23 +36,17 @@ def main():
     but also be friendly for visualization.
     """
     parser = BaseArgsParser("General algorithm arguments")
-    args = parser.GetJsonArgs(PARAM_FILE)
-    envIndex = args["envIndex"]
-    algoIndex = args["algoIndex"]
-    maxEpisodes = args["maxEpisodes"]
-    maxEpochs = args["maxEpochs"]
-    if len(sys.argv) > 1 and sys.argv[1].isdigit():
-        envIndex = int(sys.argv[1])
-        if envIndex < 0 or len(ENVS) <= envIndex:
-            print(f"Invalid env selected '{envIndex}'")
-            return 1
-    if len(sys.argv) > 2 and sys.argv[2].isdigit():
-        algoIndex = int(sys.argv[2])
-        if algoIndex < 0 or len(ALGOS) <= algoIndex:
-            print(f"Invalid algo selected '{algoIndex}'")
-            return 1
-    if len(sys.argv) > 3:
-        maxEpisodes = int(sys.argv[3])
+    args = parser.ParseArgs(PARAM_FILE)
+    envIndex = args.envIndex
+    algoIndex = args.algoIndex
+    maxEpisodes = args.maxEpisodes
+    maxEpochs = args.maxEpochs
+    if envIndex < 0 or len(ENVS) <= envIndex:
+        print(f"Invalid env selected '{envIndex}'")
+        return 1
+    if algoIndex < 0 or len(ALGOS) <= algoIndex:
+        print(f"Invalid algo selected '{algoIndex}'")
+        return 1
 
     algoType = ALGOS[algoIndex]
     env = EnvWrapperFactory(ENVS[envIndex])
@@ -78,11 +73,11 @@ def main():
             resultsTrain, globalRuntime = agent.Train(env, policy, verbose=VERBOSE)
             qTable = agent.QValues()
             SaveAsPickle(qTable, qTableFile)
-            SaveAsPickle(resultsTrain, f"{algoType}_{ENVS[envIndex]}_train.pkl")
+            SaveAsPickle(resultsTrain, f"{algoType}_{ENVS[envIndex]}_train_{POSTFIX}.pkl")
             print(f"Finished training: {globalRuntime: .4f}s")
             resultsTest, globalRuntime = agent.Evaluate(env, verbose=VERBOSE)
 
-        SaveAsPickle(resultsTest, f"{algoType}_{ENVS[envIndex]}_test.pkl")
+        SaveAsPickle(resultsTest, f"{algoType}_{ENVS[envIndex]}_test_{POSTFIX}.pkl")
         print(f"Finished evaluation: {globalRuntime: .4f}s")
     elif algoType.lower() == "a2c":
         # TODO: pipe in a2c
@@ -122,9 +117,12 @@ def main():
     if not SHOULD_PLOT:
         return 0
 
+    trainDescription = f"{algoType} {ENVS[envIndex]} training results {POSTFIX}"
+    testDescription = f"{algoType} {ENVS[envIndex]} test results {POSTFIX}"
+
     figs = []
-    figs.append(PlotPerformanceResults(resultsTrain, env.ActionSpaceLabels(shouldUseShorthand=True), f"{algoType}_{ENVS[envIndex]} training results"))
-    figs.append(PlotPerformanceResults(resultsTest, env.ActionSpaceLabels(shouldUseShorthand=True), f"{algoType}_{ENVS[envIndex]} test results"))
+    figs.append(PlotPerformanceResults(resultsTrain, env.ActionSpaceLabels(shouldUseShorthand=True), trainDescription))
+    figs.append(PlotPerformanceResults(resultsTest, env.ActionSpaceLabels(shouldUseShorthand=True), testDescription))
 
     for f in figs:
         SaveFigure(f)

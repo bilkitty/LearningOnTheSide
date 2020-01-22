@@ -8,10 +8,10 @@ algos=(Qlearning, DDPG)
 algoType=1
 resultsdir="../data/results/algo_tuning"
 mkdir -p $resultsdir
-for env in 5
+for env in 5 6
 do
   echo "Running ${algos[$algoType]} in ${names[$env]}"
-  python3 main.py $env $algoType 500 > log.txt
+  python3 main.py --envIndex $env --algoIndex $algoType > log.txt
   if [ $? -eq 0 ]
   then
     mv *.png $resultsdir

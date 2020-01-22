@@ -150,7 +150,7 @@ class DdpgAgent:
             state = env.Reset()
             start = timer()
             while not done and epoch < self.maxEpochs:
-                action = self.GetAction(state, epoch)                           # TODO: need to "normalize"? hmmm :/
+                action = self.GetAction(state, 0)                           # TODO: need to "normalize"? hmmm :/
 
                 nextState, reward, done, _ = env.Step(action)
                 self.experiences.push(state, action, reward, nextState, done)   # TODO: [expmt] try spacing these out?
@@ -187,7 +187,7 @@ class DdpgAgent:
             state = env.Reset()
             start = timer()
             while not done and epoch < self.maxEpochs:
-                action = self.GetAction(state, epoch)                           # TODO: need to "normalize"? hmmm :/
+                action = self.GetAction(state, 0)                           # TODO: need to "normalize"? hmmm :/
                 nextState, reward, done, _ = env.Step(action)
 
                 epoch += 1
