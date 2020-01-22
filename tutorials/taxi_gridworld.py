@@ -12,7 +12,6 @@ from io import StringIO
 import sys, os
 
 from matplotlib import pyplot as plt
-from environments import ENV_DICTIONARY, EnvTypes
 
 # Rendering mode; choose from ['human', 'ansi']
 MODE = "human"
@@ -483,13 +482,18 @@ def Refresh():
         os.system('cls' if os.name == 'nt' else 'clear')
     return
 
+def LoadPickle(filepath):
+    f = open(filepath, "rb")
+    contents = pkl.load(f)
+    return contents
+
 def SaveAsPickle(contents, filename):
     f = open(filename, "wb")
     pkl.dump(contents, f)
     f.close()
 
 def main():
-    env = ENV_DICTIONARY[EnvTypes.TaxiGridEnv]().env #gym.make("Taxi-v3").env
+    env = gym.make("Taxi-v3").env
     env.reset()
 
     s = State()
@@ -521,6 +525,11 @@ def main():
         allOutputs, totalEvaluationTime = EvaluatePolicy(env, qtable, MAX_TRAINING_EPISODES, MAX_TRAINING_EPOCHS)
         SaveAsPickle(allOutputs, "eval.pkl")
         print(f"Finished evaluation: {totalEvaluationTime: .4f}s")
+    elif (len(sys.argv) > 1 and sys.argv[1] == "2"):
+        qtable = LoadQTable(POLICY_FILE)
+        print("Loaded policy")
+        trainingOutput = LoadPickle("train.pkl")
+        allOutputs = LoadPickle("eval.pkl")
     else:
         print("udk wtf i want")
         return
@@ -529,12 +538,12 @@ def main():
         return
 
     plt.figure(num=1, figsize=(8,8), dpi=100)
-    a0 = [x.actions[Action.MoveS] for x in allOutputs]
-    a1 = [x.actions[Action.MoveN] for x in allOutputs]
-    a2 = [x.actions[Action.MoveE] for x in allOutputs]
-    a3 = [x.actions[Action.MoveW] for x in allOutputs]
-    a4 = [x.actions[Action.Pickup] for x in allOutputs]
-    a5 = [x.actions[Action.Dropoff] for x in allOutputs]
+    a0 = [x.actionCounts[Action.MoveS] for x in allOutputs]
+    a1 = [x.actionCounts[Action.MoveN] for x in allOutputs]
+    a2 = [x.actionCounts[Action.MoveE] for x in allOutputs]
+    a3 = [x.actionCounts[Action.MoveW] for x in allOutputs]
+    a4 = [x.actionCounts[Action.Pickup] for x in allOutputs]
+    a5 = [x.actionCounts[Action.Dropoff] for x in allOutputs]
     plt.plot(a0, color='red', marker='o', markersize=2, linewidth=0, label="s", markevery=PLOT_SAMPLE_FREQ//10)
     plt.plot(a1, color='green', marker='o', markersize=2, linewidth=0, label="n", markevery=PLOT_SAMPLE_FREQ//10 + 5)
     plt.plot(a2, color='blue', marker='o', markersize=2, linewidth=0, label="e", markevery=PLOT_SAMPLE_FREQ//10 + 15)
@@ -549,7 +558,6 @@ def main():
     plt.figure(num=1, figsize=(8,10), dpi=100)
     rewards = [x.totalReward for x in allOutputs]
     durations = [x.epochCount for x in allOutputs]
-    penalties = [x.failedPickAndDropCount.sum() for x in allOutputs]
     plt.subplot(221)
     plt.plot(rewards, linewidth=0, marker="o", markevery=PLOT_SAMPLE_FREQ)
     plt.xlabel("episode")
