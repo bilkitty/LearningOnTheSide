@@ -16,7 +16,7 @@ do
   then
     mv *.png $resultsdir
     mv *.pkl $resultsdir
-    mv log.txt $resultsdir/${algos[$algoType]}_${names[$env]}Env_log.txt
+    mv log.txt $resultsdir/${algos[$algoType]}_${names[$env]}_log.txt
   else
     echo "Failed with exit code: $?"
   fi
@@ -35,7 +35,7 @@ do
   then
     mv *.png $resultsdir
     mv *.pkl $resultsdir
-    mv log.txt $resultsdir/${algos[$algoType]}_${names[$env]}Env_log.txt
+    mv log.txt $resultsdir/${algos[$algoType]}_${names[$env]}_log.txt
   else
     echo "Failed with exit code: $?"
   fi
@@ -54,7 +54,7 @@ do
   then
     mv *.png $resultsdir
     mv *.pkl $resultsdir
-    mv log.txt $resultsdir/${algos[$algoType]}_${names[$env]}Env_log.txt
+    mv log.txt $resultsdir/${algos[$algoType]}_${names[$env]}_log.txt
   else
     echo "Failed with exit code: $?"
   fi

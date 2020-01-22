@@ -1,6 +1,8 @@
 import sys, os
+import numpy as np
 
 from utils import *
+from baseargs import BaseArgsParser
 from actorcritic.ddpg import DdpgAgent
 from qlearning.qlearning import QLearningAgent
 from environments import EnvTypes, EnvWrapperFactory
@@ -11,14 +13,13 @@ SHOULD_PLOT = True
 VERBOSE = False
 
 # TODO: python args or consider adding parameter file (prefer latter)
-MAX_EPISODES = 100000
-MAX_EPOCHS = 100000
 LEARNING_RATE = 0.1
 DISCOUNT_RATE = 0.6
 EPSILON = 0.1
 # TODO: understand how this hidden size should be set. Seems env dependent (specifically, action space)
 NN_HIDDEN_SIZE = 1
 BATCH_SIZE = 128
+PARAM_FILE = os.path.join(GetRootProjectPath(), "gymrunner/params.json")
 
 ENVS = [EnvTypes.WindyGridEnv, EnvTypes.TaxiGridEnv, EnvTypes.CartPoleEnv,
         EnvTypes.AcroBotEnv, EnvTypes.MountainCarEnv, EnvTypes.ContinuousPendulumEnv,
@@ -33,9 +34,12 @@ def main():
     into array. Need to use different data structure that'll support different state reps,
     but also be friendly for visualization.
     """
-    envIndex = 0
-    algoIndex = 0
-    maxEpisodes = MAX_EPISODES
+    parser = BaseArgsParser("General algorithm arguments")
+    args = parser.GetJsonArgs(PARAM_FILE)
+    envIndex = args["envIndex"]
+    algoIndex = args["algoIndex"]
+    maxEpisodes = args["maxEpisodes"]
+    maxEpochs = args["maxEpochs"]
     if len(sys.argv) > 1 and sys.argv[1].isdigit():
         envIndex = int(sys.argv[1])
         if envIndex < 0 or len(ENVS) <= envIndex:
@@ -59,10 +63,10 @@ def main():
         print("Finished search")
         return 0
     elif algoType.lower() == "qlearning":
-        print(f"Q-learning it\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={MAX_EPOCHS}")
+        print(f"Q-learning it\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}")
         print(f"\n  epsilon={EPSILON}\n  gamma={DISCOUNT_RATE}\n  alpha={LEARNING_RATE}\n")
         agent = QLearningAgent()
-        agent.SetParameters(EPSILON, DISCOUNT_RATE, LEARNING_RATE, maxEpisodes, MAX_EPOCHS)
+        agent.SetParameters(EPSILON, DISCOUNT_RATE, LEARNING_RATE, maxEpisodes, maxEpochs)
         policy = agent.CreatePolicyFunction()
         # load q-table if available
         if SHOULD_REUSE_QTABLE and os.path.exists(qTableFile):
@@ -85,12 +89,11 @@ def main():
         print("nothing to see here...")
     elif algoType.lower() == "ddpg":
         discountRate = 0.9
-        hiddenSize = 128
+        hiddenSize = 32
         batchSize = 128
         memoryRate = 1e-2
-        maxEpochs = 500 if ENVS[envIndex] == EnvTypes.ContinuousPendulumEnv else MAX_EPOCHS
         print(f"DDPG\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}")
-        print(f"\n  hiddenLayerSize={hiddenSize}\n  gamma={discountRate}\n  batchSize={batchSize}")
+        print(f"  hiddenLayerSize={hiddenSize}\n  gamma={discountRate}\n  batchSize={batchSize}")
         ddpga = DdpgAgent(maxMemorySize=5000, maxEpisodes=maxEpisodes, maxEpochs=maxEpochs)
         resultsTrain, globalRuntime = ddpga.Train(env,
                                                   gamma=discountRate,
@@ -100,10 +103,14 @@ def main():
                                                   criticLearningRate=1e-4,
                                                   batchSize=batchSize,
                                                   verbose=VERBOSE)
-        print(f"Finished training: {globalRuntime: .4f}s")
+        globalRewardAvg = np.mean([x.totalReward for x in resultsTrain])
+        globalRewardStd = np.std([x.totalReward for x in resultsTrain])
+        print(f"Finished training: {globalRuntime: .4f}s,\tavgEpisodeR = {globalRewardAvg: .4f} +/-{globalRewardStd: .4f}")
         SaveAsPickle(resultsTrain, f"{algoType}_{ENVS[envIndex]}_train.pkl")
         resultsTest, globalRuntime = ddpga.Test(env, verbose=VERBOSE)
-        print(f"Finished testing: {globalRuntime: .4f}s")
+        globalRewardAvg = np.mean([x.totalReward for x in resultsTest])
+        globalRewardStd = np.std([x.totalReward for x in resultsTest])
+        print(f"Finished testing: {globalRuntime: .4f}s,\tavgEpisodeR = {globalRewardAvg: .4f} +/-{globalRewardStd: .4f}")
         SaveAsPickle(resultsTest, f"{algoType}_{ENVS[envIndex]}_test.pkl")
     else:
         print(f"Unsupported algo type '{algoType}'")
