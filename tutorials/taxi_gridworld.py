@@ -530,6 +530,7 @@ def main():
         print("Loaded policy")
         trainingOutput = LoadPickle("train.pkl")
         allOutputs = LoadPickle("eval.pkl")
+        print("Loaded train and test results")
     else:
         print("udk wtf i want")
         return
@@ -538,12 +539,12 @@ def main():
         return
 
     plt.figure(num=1, figsize=(8,8), dpi=100)
-    a0 = [x.actionCounts[Action.MoveS] for x in allOutputs]
-    a1 = [x.actionCounts[Action.MoveN] for x in allOutputs]
-    a2 = [x.actionCounts[Action.MoveE] for x in allOutputs]
-    a3 = [x.actionCounts[Action.MoveW] for x in allOutputs]
-    a4 = [x.actionCounts[Action.Pickup] for x in allOutputs]
-    a5 = [x.actionCounts[Action.Dropoff] for x in allOutputs]
+    a0 = [x.actions[Action.MoveS] for x in allOutputs]
+    a1 = [x.actions[Action.MoveN] for x in allOutputs]
+    a2 = [x.actions[Action.MoveE] for x in allOutputs]
+    a3 = [x.actions[Action.MoveW] for x in allOutputs]
+    a4 = [x.actions[Action.Pickup] for x in allOutputs]
+    a5 = [x.actions[Action.Dropoff] for x in allOutputs]
     plt.plot(a0, color='red', marker='o', markersize=2, linewidth=0, label="s", markevery=PLOT_SAMPLE_FREQ//10)
     plt.plot(a1, color='green', marker='o', markersize=2, linewidth=0, label="n", markevery=PLOT_SAMPLE_FREQ//10 + 5)
     plt.plot(a2, color='blue', marker='o', markersize=2, linewidth=0, label="e", markevery=PLOT_SAMPLE_FREQ//10 + 15)
