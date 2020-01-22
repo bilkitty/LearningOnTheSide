@@ -9,10 +9,14 @@ common/.idea
 common/__pycache__/
 gymrunner/.idea
 gymrunner/__pycache__/
+gymrunner/*.pkl
+gymrunner/*.png
 tests/.idea
 tests/algo/__pycache__/
 tests/common/__pycache__/
 tests/gymrunner/__pycache__/
+tutorials/*.pkl
+tutorials/*.png
 sim/.idea/
 sim/*.urdf
 sim/venv/
