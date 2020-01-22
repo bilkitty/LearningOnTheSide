@@ -32,11 +32,11 @@ class DdpgAgent:
         self.maxEpisodes = maxEpisodes
         self.maxEpochs = maxEpochs
 
-    def SetupNetworks(self, env, hiddenSize):
+    def SetupNetworks(self, envWrapper, hiddenSize):
         assert(0 <= hiddenSize)
 
-        numStates = env.ObservationSpaceN()
-        numActions = env.ActionSpaceN()
+        numStates = envWrapper.ObservationSpaceN()
+        numActions = envWrapper.ActionSpaceN()
         self.actor = Actor(input_size=numStates, output_size=numActions, hidden_size=hiddenSize)
         self.actorTarget = Actor(input_size=numStates, output_size=numActions, hidden_size=hiddenSize)
         self.critic = Critic(input_size=numStates + numActions, output_size=1, hidden_size=hiddenSize)
@@ -61,14 +61,23 @@ class DdpgAgent:
         else:
             return False
 
-    def SetupNoiseProcess(self, env, mu=0):
-        self.noiseProcess = OUStrategy(env.action_space, mu)
+    def SetupNoiseProcess(self, envWrapper, mu=0):
+        self.noiseProcess = OUStrategy(envWrapper.env.action_space, mu)
+
+    def SaveNnModelsAndOptimizers(self):
+        """
+        https: // pytorch.org / tutorials / beginner / saving_loading_models.html  # saving-loading-model-for-inference
+        """
+        raise NotImplementedError
+
+    def LoadNnModelsAndOptimizers(self):
+        raise NotImplementedError
 
     def GetAction(self, state, offset, shouldAddNoise=True):
-        state = Variable(torch.from_numpy(state).float().unsqueeze(0))
+        assert(self.noiseProcess is not None)
+        state = Variable(torch.from_numpy(state).float())#.unsqueeze(0))
         action = self.actor.forward(state)
-        action = action.detach().numpy()[0,0]
-        # TODO: is this the best action? What specifically is this? Also, use squeeze/unsqueeze?
+        action = action.detach().numpy()#.squeeze(0).numpy()
         if shouldAddNoise:
             action = self.noiseProcess.get_action(action, offset)
         return action
@@ -118,10 +127,10 @@ class DdpgAgent:
         # TODO: call some version of update (like above)
         return NotImplemented
 
-    def Train(self, env, gamma, tau, hiddenSize, actorLearningRate, criticLearningRate, batchSize, verbose=True):
+    def Train(self, envWrapper, gamma, tau, hiddenSize, actorLearningRate, criticLearningRate, batchSize, verbose=True):
         """
         args:
-            env     envwrapper  a wrapper containing gym environment
+            envWrapper     envWrapperwrapper  a wrapper containing gym envWrapperironment
             gamma   float       reward discount rate
             tau     float       soft update rate for target networks
             hSize   int         width of all hidden layers
@@ -136,9 +145,9 @@ class DdpgAgent:
         gamma = min(max(0, gamma), 1)
         tau = min(max(0, tau), 1)
 
-        self.SetupNetworks(env, hiddenSize)
+        self.SetupNetworks(envWrapper, hiddenSize)
         self.SetupOptimizers(actorLearningRate, criticLearningRate)
-        self.SetupNoiseProcess(env.env)
+        self.SetupNoiseProcess(envWrapper)
 
         episodicMetrics = []
         globalStart = timer()
@@ -147,19 +156,19 @@ class DdpgAgent:
             totalReward = 0
             frames = []
             done = False
-            state = env.Reset()
+            state = envWrapper.Reset()
             start = timer()
             while not done and epoch < self.maxEpochs:
-                action = self.GetAction(state, 0)                           # TODO: need to "normalize"? hmmm :/
+                action = self.GetAction(state, 0, shouldAddNoise=False)                           # TODO: need to "normalize"? hmmm :/
 
-                nextState, reward, done, _ = env.Step(action)
+                nextState, reward, done, _ = envWrapper.Step(action)
                 self.experiences.push(state, action, reward, nextState, done)   # TODO: [expmt] try spacing these out?
                 self.UpdateUsingReplay(gamma, tau, batchSize)
 
                 epoch += 1
                 totalReward += reward
                 frames.append({
-                    'frame': env.Render(),
+                    'frame': envWrapper.Render(),
                     'state': state,
                     'action': action,
                     'reward': reward})
@@ -176,7 +185,7 @@ class DdpgAgent:
 
         return episodicMetrics, timer() - globalStart
 
-    def Test(self, env, verbose):
+    def Test(self, envWrapper, verbose):
         episodicMetrics = []
         globalStart = timer()
         for i in np.arange(self.maxEpisodes):
@@ -184,16 +193,16 @@ class DdpgAgent:
             totalReward = 0
             frames = []
             done = False
-            state = env.Reset()
+            state = envWrapper.Reset()
             start = timer()
             while not done and epoch < self.maxEpochs:
-                action = self.GetAction(state, 0)                           # TODO: need to "normalize"? hmmm :/
-                nextState, reward, done, _ = env.Step(action)
+                action = self.GetAction(state, 0, shouldAddNoise=False)                           # TODO: need to "normalize"? hmmm :/
+                nextState, reward, done, _ = envWrapper.Step(action)
 
                 epoch += 1
                 totalReward += reward
                 frames.append({
-                    'frame': env.Render(),
+                    'frame': envWrapper.Render(),
                     'state': state,
                     'action': action,
                     'reward': reward})

@@ -65,3 +65,5 @@ class Critic(nn.Module):
         value = self.linear3(x)
 
         return value
+
+# TODO: specify actor and critic optimizers. they should take network params and a learning rate as ctor args
