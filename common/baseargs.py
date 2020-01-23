@@ -23,6 +23,7 @@ class BaseArgsParser:
         self.cmdlnParser.add_argument("--maxEpisodes", metavar="maxEpisodes", type=int, help="")
         self.cmdlnParser.add_argument("--envIndex", metavar="envIndex", type=int, help="")
         self.cmdlnParser.add_argument("--algoIndex", metavar="algoIndex", type=int, help="")
+        self.cmdlnParser.add_argument("--tau", metavar="tau", type=float, help="")
         self.cmdlnParser.add_argument("--verbose", action="store_true", help="")
 
     def ParseArgs(self, jsonfilepath=None):
