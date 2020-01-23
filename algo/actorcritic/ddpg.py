@@ -158,7 +158,7 @@ class DdpgAgent:
             done = False
             state = envWrapper.Reset()
             start = timer()
-            while not done and epoch < self.maxEpochs:
+            while not envWrapper.IsDone(done, epoch, self.maxEpochs):
                 action = self.GetAction(state, 0)                           # TODO: need to "normalize"? hmmm :/
                 nextState, reward, done, _ = envWrapper.Step(action)
 
