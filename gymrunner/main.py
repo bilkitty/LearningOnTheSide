@@ -10,7 +10,6 @@ from visualise import PlotPerformanceResults, SaveFigure
 
 SHOULD_REUSE_QTABLE = False
 SHOULD_PLOT = True
-VERBOSE = False
 
 # TODO: python args or consider adding parameter file (prefer latter)
 LEARNING_RATE = 0.1
@@ -20,7 +19,6 @@ EPSILON = 0.1
 NN_HIDDEN_SIZE = 1
 BATCH_SIZE = 128
 PARAM_FILE = os.path.join(GetRootProjectPath(), "gymrunner/params.json")
-POSTFIX = "no_action_noise_offset"
 
 ENVS = [EnvTypes.WindyGridEnv, EnvTypes.TaxiGridEnv, EnvTypes.CartPoleEnv,
         EnvTypes.AcroBotEnv, EnvTypes.MountainCarEnv, EnvTypes.ContinuousPendulumEnv,
@@ -41,6 +39,9 @@ def main():
     algoIndex = args.algoIndex
     maxEpisodes = args.maxEpisodes
     maxEpochs = args.maxEpochs
+    verbose = args.verbose
+    postfix = args.desc
+
     if envIndex < 0 or len(ENVS) <= envIndex:
         print(f"Invalid env selected '{envIndex}'")
         return 1
@@ -68,45 +69,47 @@ def main():
             qTable = LoadFromPickle(qTableFile)
             print("Loaded q-table")
             resultsTrain = None
-            resultsTest, globalRuntime = agent.Evaluate(env, qTable, verbose=VERBOSE)
+            resultsTest, globalRuntime = agent.Evaluate(env, qTable, verbose=verbose)
         else:
-            resultsTrain, globalRuntime = agent.Train(env, policy, verbose=VERBOSE)
+            resultsTrain, globalRuntime = agent.Train(env, policy, verbose=verbose)
             qTable = agent.QValues()
             SaveAsPickle(qTable, qTableFile)
-            SaveAsPickle(resultsTrain, f"{algoType}_{ENVS[envIndex]}_train_{POSTFIX}.pkl")
+            SaveAsPickle(resultsTrain, f"{algoType}_{ENVS[envIndex]}_train_{postfix}.pkl")
             print(f"Finished training: {globalRuntime: .4f}s")
-            resultsTest, globalRuntime = agent.Evaluate(env, verbose=VERBOSE)
+            resultsTest, globalRuntime = agent.Evaluate(env, verbose=verbose)
 
-        SaveAsPickle(resultsTest, f"{algoType}_{ENVS[envIndex]}_test_{POSTFIX}.pkl")
+        SaveAsPickle(resultsTest, f"{algoType}_{ENVS[envIndex]}_test_{postfix}.pkl")
         print(f"Finished evaluation: {globalRuntime: .4f}s")
     elif algoType.lower() == "a2c":
         # TODO: pipe in a2c
         print("nothing to see here...")
     elif algoType.lower() == "ddpg":
-        discountRate = 0.9
-        hiddenSize = 32
-        batchSize = 128
-        memoryRate = 1e-2
+        discountRate = args.discountRate
+        hiddenSize = args.hiddenLayerWidth
+        batchSize = args.batchSize
+        memoryRate = args.memoryRate
+        alr = args.actorLearningRate
+        clr = args.criticLearningRate
         print(f"DDPG\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}")
         print(f"  hiddenLayerSize={hiddenSize}\n  gamma={discountRate}\n  batchSize={batchSize}")
-        ddpga = DdpgAgent(maxMemorySize=5000, maxEpisodes=maxEpisodes, maxEpochs=maxEpochs)
+        ddpga = DdpgAgent(maxMemorySize=50000, maxEpisodes=maxEpisodes, maxEpochs=maxEpochs)
         resultsTrain, globalRuntime = ddpga.Train(env,
                                                   gamma=discountRate,
                                                   tau=memoryRate,
                                                   hiddenSize=hiddenSize,
-                                                  actorLearningRate=1e-4,
-                                                  criticLearningRate=1e-4,
+                                                  actorLearningRate=alr,
+                                                  criticLearningRate=clr,
                                                   batchSize=batchSize,
-                                                  verbose=VERBOSE)
+                                                  verbose=verbose)
         globalRewardAvg = np.mean([x.totalReward for x in resultsTrain])
         globalRewardStd = np.std([x.totalReward for x in resultsTrain])
         print(f"Finished training: {globalRuntime: .4f}s,\tavgEpisodeR = {globalRewardAvg: .4f} +/-{globalRewardStd: .4f}")
-        SaveAsPickle(resultsTrain, f"{algoType}_{ENVS[envIndex]}_train.pkl")
-        resultsTest, globalRuntime = ddpga.Test(env, verbose=VERBOSE)
+        SaveAsPickle(resultsTrain, f"{algoType}_{ENVS[envIndex]}_train_{postfix}.pkl")
+        resultsTest, globalRuntime = ddpga.Test(env, verbose=verbose)
         globalRewardAvg = np.mean([x.totalReward for x in resultsTest])
         globalRewardStd = np.std([x.totalReward for x in resultsTest])
         print(f"Finished testing: {globalRuntime: .4f}s,\tavgEpisodeR = {globalRewardAvg: .4f} +/-{globalRewardStd: .4f}")
-        SaveAsPickle(resultsTest, f"{algoType}_{ENVS[envIndex]}_test.pkl")
+        SaveAsPickle(resultsTest, f"{algoType}_{ENVS[envIndex]}_test_{postfix}.pkl")
     else:
         print(f"Unsupported algo type '{algoType}'")
         return 1
@@ -117,8 +120,8 @@ def main():
     if not SHOULD_PLOT:
         return 0
 
-    trainDescription = f"{algoType} {ENVS[envIndex]} training results {POSTFIX}"
-    testDescription = f"{algoType} {ENVS[envIndex]} test results {POSTFIX}"
+    trainDescription = f"{algoType} {ENVS[envIndex]} training results {postfix}"
+    testDescription = f"{algoType} {ENVS[envIndex]} test results {postfix}"
 
     figs = []
     figs.append(PlotPerformanceResults(resultsTrain, env.ActionSpaceLabels(shouldUseShorthand=True), trainDescription))

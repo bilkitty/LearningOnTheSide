@@ -159,9 +159,9 @@ class DdpgAgent:
             state = envWrapper.Reset()
             start = timer()
             while not done and epoch < self.maxEpochs:
-                action = self.GetAction(state, 0, shouldAddNoise=False)                           # TODO: need to "normalize"? hmmm :/
-
+                action = self.GetAction(state, 0)                           # TODO: need to "normalize"? hmmm :/
                 nextState, reward, done, _ = envWrapper.Step(action)
+
                 self.experiences.push(state, action, reward, nextState, done)   # TODO: [expmt] try spacing these out?
                 self.UpdateUsingReplay(gamma, tau, batchSize)
 
@@ -177,7 +177,7 @@ class DdpgAgent:
                     RefreshScreen(mode="human")
                     s = torch.FloatTensor(state).unsqueeze(0)
                     a = torch.FloatTensor(action).unsqueeze(0)
-                    qv = 0 #self.critic.forward(s, a).detach().squeeze(0).numpy()[0]
+                    qv = self.critic.forward(s, a).detach().squeeze(0).numpy()[0]
                     print(f"Training\ne={i}\nr={np.max(reward): 0.2f}\nq={qv: .2f}")
 
             metrics = Metrics(frames, epoch, timer() - start, totalReward, done)
@@ -196,7 +196,7 @@ class DdpgAgent:
             state = envWrapper.Reset()
             start = timer()
             while not done and epoch < self.maxEpochs:
-                action = self.GetAction(state, 0, shouldAddNoise=False)                           # TODO: need to "normalize"? hmmm :/
+                action = self.GetAction(state, 0, shouldAddNoise=False)
                 nextState, reward, done, _ = envWrapper.Step(action)
 
                 epoch += 1
@@ -211,7 +211,7 @@ class DdpgAgent:
                     RefreshScreen(mode="human")
                     s = torch.FloatTensor(state).unsqueeze(0)
                     a = torch.FloatTensor(action).unsqueeze(0)
-                    qv = 0
+                    qv = self.critic.forward(s, a).detach().squeeze(0).numpy()[0]
                     print(f"Testing\ne={i}\nr={np.max(reward): 0.2f}\nq={qv: .2f}")
 
             metrics = Metrics(frames, epoch, timer() - start, totalReward, done)

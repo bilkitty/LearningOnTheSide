@@ -31,6 +31,9 @@ class TestNoiseProcess(unittest.TestCase):
     def setUp(self):
         self.env = EnvWrapperFactory(EnvTypes.MountainCarEnv, renderingMode="ansi").env
 
+    def tearDown(self):
+        self.env.Close()
+
     def test_ornsteinUhlenbeckCreation(self):
         self.assertIsNotNone(OUStrategy(self.env.action_space))
 
