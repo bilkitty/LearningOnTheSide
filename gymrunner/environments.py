@@ -86,15 +86,6 @@ class GymEnvWrapper:
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         raise NotImplementedError
 
-    @staticmethod
-    def IsDone(self, doneStatus, epoch, maxEpochs):
-        """
-        [WORKAROUND] for environments whose timeouts are hard-coded (e.g., pendulum, I think)
-                     need to find out how to override internal timelimit (seems like editing
-                     spec fields is ineffective)
-        """
-        return doneStatus is True or maxEpochs <= epoch
-
 
 """
  Pendulum
@@ -123,12 +114,6 @@ class ContinuousPendulumEnvWrapper(GymEnvWrapper):
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         return ["torque"]
-
-    def IsDone(self, doneStatus, epoch, maxEpochs):
-        """
-        Seems to always timeout after 200 epochs, so don't use done status
-        """
-        return maxEpochs <= epoch
 
 
 """
