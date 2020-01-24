@@ -86,6 +86,15 @@ class GymEnvWrapper:
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         raise NotImplementedError
 
+    @staticmethod
+    def IsDone(self, doneStatus, epoch, maxEpochs):
+        """
+        [WORKAROUND] for environments whose timeouts are hard-coded (e.g., pendulum, I think)
+                     need to find out how to override internal timelimit (seems like editing
+                     spec fields is ineffective)
+        """
+        return doneStatus is True or maxEpochs <= epoch
+
 
 """
  Pendulum
@@ -107,10 +116,19 @@ class GymEnvWrapper:
 class ContinuousPendulumEnvWrapper(GymEnvWrapper):
 
     def __init__(self, renderingMode):
-        GymEnvWrapper.__init__(self, gym.make("Pendulum-v0"), renderingMode=renderingMode)
+        pendulum = gym.make("Pendulum-v0")
+        pendulum.spec.max_episode_steps = 999
+        pendulum.spec.tags["wrapper_config.TimeLimit.max_episode_steps"] = pendulum.spec.max_episode_steps
+        GymEnvWrapper.__init__(self, pendulum, renderingMode=renderingMode)
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         return ["torque"]
+
+    def IsDone(self, doneStatus, epoch, maxEpochs):
+        """
+        Seems to always timeout after 200 epochs, so don't use done status
+        """
+        return maxEpochs <= epoch
 
 
 """
@@ -126,7 +144,7 @@ class ContinuousPendulumEnvWrapper(GymEnvWrapper):
     Position and velocity of car
     
  A car sits in a valley with a flag on top of the right hill. The car must navigate towards the flag. The driver 
- receives -1 reward for each time step. They receive +100 reward once the flag is reached.  
+ receives -0.1 * force^2 reward for each time step. They receive +100 reward once the flag is reached.  
 """
 
 
