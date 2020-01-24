@@ -10,7 +10,7 @@ class Memory:
     def push(self, state, action, reward, next_state, done):
         # TODO: why is the reward stored like this? Could use torch api to add this extra dim?
         experience = (state, action, np.array([reward]), next_state, done)
-        self.buffer.appendleft(experience)
+        self.buffer.append(experience)
 
     def sample(self, batch_size):
         assert(0 <= batch_size)
@@ -37,6 +37,9 @@ class Memory:
     def getLatest(self):
         assert(0 < self.__len__())
         return self.buffer.pop()
+
+    def reset(self):
+        self.buffer.clear()
 
     def __len__(self):
         return len(self.buffer)
