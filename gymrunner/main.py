@@ -92,13 +92,18 @@ def main():
         clr = args.criticLearningRate
         print(f"DDPG\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}")
         print(f"  hiddenLayerSize={hiddenSize}\n  gamma={discountRate}\n  batchSize={batchSize}")
-        ddpga = DdpgAgent(env, maxMemorySize=50000, maxEpisodes=maxEpisodes, maxEpochs=maxEpochs,
-                                                  gamma=discountRate,
-                                                  tau=memoryRate,
-                                                  hiddenSize=hiddenSize,
-                                                  actorLearningRate=alr,
-                                                  criticLearningRate=clr,
-                                                  batchSize=batchSize)
+        ddpga = DdpgAgent(maxEpisodes=maxEpisodes,
+                          maxEpochs=maxEpochs,
+                          gamma=discountRate,
+                          tau=memoryRate,
+                          batchSize=batchSize)
+
+        ddpga.Initialize(env,
+                         maxMemorySize=50000,
+                         hiddenSize=hiddenSize,
+                         actorLearningRate=alr,
+                         criticLearningRate=clr)
+
         resultsTrain, globalRuntime = ddpga.Train(env,
                                                   gamma=discountRate,
                                                   tau=memoryRate,
@@ -107,6 +112,7 @@ def main():
                                                   criticLearningRate=clr,
                                                   batchSize=batchSize,
                                                   verbose=verbose)
+
         globalRewardAvg = np.mean([x.totalReward for x in resultsTrain])
         globalRewardStd = np.std([x.totalReward for x in resultsTrain])
         print(f"Finished training: {globalRuntime: .4f}s,\tavgEpisodeR = {globalRewardAvg: .4f} +/-{globalRewardStd: .4f}")

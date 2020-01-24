@@ -7,11 +7,10 @@ from environments import EnvTypes, EnvWrapperFactory
 from noiseprocess import OUStrategy
 from baseargs import BaseArgsParser
 
-# TODO: set env variables for proj dir, test dir, etc.
 TEST_METRICS_PKL = os.path.join(utils.GetRootProjectPath(), "tests/data/mountaincar_metrics.pkl")
 TEST_ARGS_JSON = os.path.join(utils.GetRootProjectPath(), "tests/data/testargs.json")
-MOCK_ARGS_JSON = "{\"arg0\": 1, \"arg1\": 42.4242, \"arg3\": \"type0\"}"
 MOCK_RESULTS = Metrics.LoadMetricsFromPickle(TEST_METRICS_PKL)
+MOCK_ARGS_CMDLN = ["--envIndex", "0", "--verbose"]
 
 
 class TestVisualisation(unittest.TestCase):
@@ -23,38 +22,39 @@ class TestVisualisation(unittest.TestCase):
         fig.savefig("test_PerformancePlot.png")
 
 
-# TODO: add test for memory
-#   - what happens if buffersize > items in queue?
-
 # NOTE: use continuous action space environments for these tests
 class TestNoiseProcess(unittest.TestCase):
     def setUp(self):
-        self.env = EnvWrapperFactory(EnvTypes.MountainCarEnv, renderingMode="ansi").env
+        self.envWrapper = EnvWrapperFactory(EnvTypes.ContinuousMountainCarEnv, renderingMode="ansi")
 
     def tearDown(self):
-        self.env.Close()
+        self.envWrapper.Close()
 
-    def test_ornsteinUhlenbeckCreation(self):
-        self.assertIsNotNone(OUStrategy(self.env.action_space))
+    def test_OrnsteinUhlenbeckCreation(self):
+        self.assertIsNotNone(OUStrategy(self.envWrapper.env.action_space))
 
-    def test_ornsteinUhlenbeckGetAction(self):
-        noiseModel = OUStrategy(self.env.action_space)
-        randomAction = self.env.action_space.sample() # probs doesn't work
+    def test_OrnsteinUhlenbeckGetAction(self):
+        noiseModel = OUStrategy(self.envWrapper.env.action_space)
+        randomAction = self.envWrapper.env.action_space.sample()
         self.assertIsNotNone(noiseModel.get_action(randomAction))
         self.assertNotEqual(noiseModel.get_action(randomAction), randomAction)
 
 
 class TestArgsParser(unittest.TestCase):
     def setUp(self):
+        with open(TEST_ARGS_JSON, "wb") as f:
+            f.write("{\"arg0\": 1, \"arg1\": 42.4242, \"arg3\": \"type0\"}".encode())
+            f.close()
+
         self.parser = BaseArgsParser("test args")
 
-    def test_parseArgs(self):
-        args = self.parser.ParseArgs(TEST_ARGS_JSON)
+    def test_ParseArgs(self):
+        args = self.parser.ParseArgs(TEST_ARGS_JSON, MOCK_ARGS_CMDLN)
         self.assertIsNotNone(args.arg0)
         self.assertIsNotNone(args.arg1)
         self.assertIsNotNone(args.envIndex)
 
-    def test_getJsonArgs(self):
+    def test_GetJsonArgs(self):
         argDict = self.parser.GetJsonArgs(TEST_ARGS_JSON)
         self.assertEqual(argDict["arg0"], 1)
         self.assertEqual(argDict["arg1"], 42.4242)

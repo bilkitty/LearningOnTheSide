@@ -13,6 +13,7 @@ gymrunner/*.pkl
 gymrunner/*.png
 gymrunner/*.txt
 tests/.idea
+tests/*.png
 tests/algo/__pycache__/
 tests/common/__pycache__/
 tests/common/*.png

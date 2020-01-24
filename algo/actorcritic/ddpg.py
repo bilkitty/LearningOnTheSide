@@ -18,8 +18,7 @@ from noiseprocess import OUStrategy
 
 class DdpgAgent(ModelFreeAgent):
 
-    def __init__(self, envWrapper, maxMemorySize, maxEpisodes, maxEpochs, gamma, tau,
-                 hiddenSize, actorLearningRate, criticLearningRate, batchSize):
+    def __init__(self, maxEpisodes, maxEpochs, gamma, tau, batchSize):
         """
         args:
             envWrapper      obj         a wrapper containing gym environment
@@ -44,12 +43,22 @@ class DdpgAgent(ModelFreeAgent):
         self.actorOptimizer = None
         self.criticOptimizer = None
         self.noiseProcess = None
-        self.experiences = Memory(maxMemorySize)
+        self.experiences = None
         self.lossFunction = nn.MSELoss()
 
-        #self.SetupNetworks(envWrapper, hiddenSize)
-        #self.SetupOptimizers(actorLearningRate, criticLearningRate)
-        #self.SetupNoiseProcess(envWrapper)
+    def Initialize(self, envWrapper, maxMemorySize, hiddenSize, actorLearningRate, criticLearningRate):
+        """
+        In the future, it would be awesome to create an agent that is less dependent on the training/test environment.
+            The arch of the neural networks used by this agent is determined by action and state space size
+            Similarly for the noise process
+
+        So, how can these internal components be made more generic? Map specific action/state spaces to a more
+        general interface? What are possible ways to "normalize"?
+        """
+        self.SetupNetworks(envWrapper, hiddenSize)
+        self.SetupOptimizers(actorLearningRate, criticLearningRate)
+        self.SetupNoiseProcess(envWrapper)
+        self.experiences = Memory(maxMemorySize)
 
     def SetupNetworks(self, envWrapper, hiddenSize):
         assert(0 <= hiddenSize)
@@ -92,11 +101,11 @@ class DdpgAgent(ModelFreeAgent):
     def LoadNnModelsAndOptimizers(self):
         raise NotImplementedError
 
-    def UpdateUsingReplay(self, gamma, tau, batchSize):
-        assert(0 <= gamma and gamma <= 1)
-        assert(0 <= tau and tau <= 1)
+    def __UpdateWithReplay__(self):
+        assert(self.experiences is not None)
+        assert(self.actor is not None and self.actorOptimizer is not None)
 
-        states, actions, rewards, nextStates, status = self.experiences.sample(batchSize)
+        states, actions, rewards, nextStates, status = self.experiences.sample(self.batchSize)
 
         if len(states) == 0:
             # Insufficient experience for sampling batch
@@ -111,7 +120,7 @@ class DdpgAgent(ModelFreeAgent):
         learntActions = self.actor.forward(states)
         learntValues = self.critic.forward(states, actions)
         targetActions = self.actorTarget.forward(nextStates).detach()
-        targetValues = rewards + gamma * self.criticTarget.forward(nextStates, targetActions)
+        targetValues = rewards + self.gamma * self.criticTarget.forward(nextStates, targetActions)
         criticLoss = self.lossFunction(learntValues, targetValues)
         actorLoss = self.critic.forward(states, learntActions)
         # Use the average of all batched losses
@@ -127,34 +136,34 @@ class DdpgAgent(ModelFreeAgent):
 
         # "soft" update: new target parameters as weighted average of learnt and target parameters
         for targetParam, param in zip(self.actorTarget.parameters(), self.actor.parameters()):
-            targetParam.data.copy_((1 - tau) * targetParam.data + tau * param.data)
+            targetParam.data.copy_((1 - self.tau) * targetParam.data + self.tau * param.data)
         for targetParam, param in zip(self.criticTarget.parameters(), self.critic.parameters()):
-            targetParam.data.copy_((1 - tau) * targetParam.data + tau * param.data)
+            targetParam.data.copy_((1 - self.tau) * targetParam.data + self.tau * param.data)
 
         return True
 
+    def __UpdateWithoutReplay__(self):
+        raise NotImplementedError
+
     def Update(self):
-        # TODO: call some version of update (like above)
-        raise NotImplemented
+        return self.__UpdateWithReplay__()
 
     def SaveExperience(self, state, action, nextState, reward, done):
         self.experiences.push(state, action, reward, nextState, done)  # TODO: [expmt] try spacing these out?
-        # TODO: test
-        raise NotImplemented
 
-    def GetAction(self, state, shouldAddNoise=True, offset=0):
+    def GetAction(self, state, shouldAddNoise=False, offset=0):
         assert(self.noiseProcess is not None)
-        state = Variable(torch.from_numpy(state).float())#.unsqueeze(0))
+        state = Variable(torch.from_numpy(state).float())
         action = self.actor.forward(state)
-        action = action.detach().numpy()#.squeeze(0).numpy()
+        action = action.detach().numpy()
         if shouldAddNoise:
             action = self.noiseProcess.get_action(action, offset)
         return action
 
     def GetValue(self, state, action):
-        v = self.critic.forward(state, action).detach().squeeze(0).numpy()[0]
-        # TODO: test
-        raise NotImplemented
+        s = torch.FloatTensor(state).unsqueeze(0)
+        a = torch.FloatTensor(action).unsqueeze(0)
+        return self.critic.forward(s, a).detach().squeeze(0).numpy()[0]
 
     def Train(self, envWrapper, gamma, tau, hiddenSize, actorLearningRate, criticLearningRate, batchSize, verbose=True):
         """
@@ -188,7 +197,7 @@ class DdpgAgent(ModelFreeAgent):
             state = envWrapper.Reset()
             start = timer()
             while not done and epoch < self.maxEpochs:
-                action = self.GetAction(state)                           # TODO: need to "normalize"? hmmm :/
+                action = self.GetAction(state, shouldAddNoise=True)                           # TODO: need to "normalize"? hmmm :/
                 nextState, reward, done, _ = envWrapper.Step(action)
 
                 self.experiences.push(state, action, reward, nextState, done)   # TODO: [expmt] try spacing these out?
