@@ -8,6 +8,7 @@ from environments import *
 from memory import *
 from metrics import *
 from .nnModels import *
+from .agent import ModelFreeAgent
 from utils import RefreshScreen
 from noiseprocess import OUStrategy
 
@@ -15,11 +16,27 @@ from noiseprocess import OUStrategy
 #       with Discrete and Box types. -_-
 
 
-class DdpgAgent:
-    DEFAULT_MAX_EPISODES = 100000
-    DEFAULT_MAX_EPOCHS = 100000
+class DdpgAgent(ModelFreeAgent):
 
-    def __init__(self, maxMemorySize, maxEpisodes=DEFAULT_MAX_EPISODES, maxEpochs=DEFAULT_MAX_EPOCHS):
+    def __init__(self, envWrapper, maxMemorySize, maxEpisodes, maxEpochs, gamma, tau,
+                 hiddenSize, actorLearningRate, criticLearningRate, batchSize):
+        """
+        args:
+            envWrapper      obj         a wrapper containing gym environment
+            gamma           float       reward discount rate
+            tau             float       soft update rate for target networks
+            hSize           int         width of all hidden layers
+            alRate          float       learning rate for actor optimization
+            clRate          float       learning rate for critic optimization
+            bSize           int         sample size for updates using replay
+
+        """
+
+        ModelFreeAgent.__init__(self, maxEpisodes=maxEpisodes, maxEpochs=maxEpochs)
+        self.gamma = min(max(0, gamma), 1)
+        self.tau = min(max(0, tau), 1)
+        self.batchSize = batchSize
+
         self.actor = None
         self.actorTarget = None
         self.critic = None
@@ -29,8 +46,10 @@ class DdpgAgent:
         self.noiseProcess = None
         self.experiences = Memory(maxMemorySize)
         self.lossFunction = nn.MSELoss()
-        self.maxEpisodes = maxEpisodes
-        self.maxEpochs = maxEpochs
+
+        self.SetupNetworks(envWrapper, hiddenSize)
+        self.SetupOptimizers(actorLearningRate, criticLearningRate)
+        self.SetupNoiseProcess(envWrapper)
 
     def SetupNetworks(self, envWrapper, hiddenSize):
         assert(0 <= hiddenSize)
@@ -72,15 +91,6 @@ class DdpgAgent:
 
     def LoadNnModelsAndOptimizers(self):
         raise NotImplementedError
-
-    def GetAction(self, state, offset, shouldAddNoise=True):
-        assert(self.noiseProcess is not None)
-        state = Variable(torch.from_numpy(state).float())#.unsqueeze(0))
-        action = self.actor.forward(state)
-        action = action.detach().numpy()#.squeeze(0).numpy()
-        if shouldAddNoise:
-            action = self.noiseProcess.get_action(action, offset)
-        return action
 
     def UpdateUsingReplay(self, gamma, tau, batchSize):
         assert(0 <= gamma and gamma <= 1)
@@ -125,7 +135,26 @@ class DdpgAgent:
 
     def Update(self):
         # TODO: call some version of update (like above)
-        return NotImplemented
+        raise NotImplemented
+
+    def SaveExperience(self, state, action, nextState, reward, done):
+        self.experiences.push(state, action, reward, nextState, done)  # TODO: [expmt] try spacing these out?
+        # TODO: test
+        raise NotImplemented
+
+    def GetAction(self, state, shouldAddNoise=True, offset=0):
+        assert(self.noiseProcess is not None)
+        state = Variable(torch.from_numpy(state).float())#.unsqueeze(0))
+        action = self.actor.forward(state)
+        action = action.detach().numpy()#.squeeze(0).numpy()
+        if shouldAddNoise:
+            action = self.noiseProcess.get_action(action, offset)
+        return action
+
+    def GetValue(self, state, action):
+        v = self.critic.forward(state, action).detach().squeeze(0).numpy()[0]
+        # TODO: test
+        raise NotImplemented
 
     def Train(self, envWrapper, gamma, tau, hiddenSize, actorLearningRate, criticLearningRate, batchSize, verbose=True):
         """
