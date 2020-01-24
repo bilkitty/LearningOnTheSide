@@ -34,6 +34,21 @@ class EnvTypes:
     ContinuousPendulumEnv = "ContinuousPendulum"
 
 
+# https://github.com/openai/gym/blob/master/gym/core.py
+class NormalizedEnv(gym.ActionWrapper):
+    """ Wrap action """
+
+    def action(self, action):
+        act_k = (self.action_space.high - self.action_space.low)/ 2.
+        act_b = (self.action_space.high + self.action_space.low)/ 2.
+        return act_k * action + act_b
+
+    def reverse_action(self, action):
+        act_k_inv = 2./(self.action_space.high - self.action_space.low)
+        act_b = (self.action_space.high + self.action_space.low)/ 2.
+        return act_k_inv * (action - act_b)
+
+
 def EnvWrapperFactory(envType, renderingMode=RENDERING_MODE):
     if envType == EnvTypes.WindyGridEnv:
         return WindyGridEnvWrapper(renderingMode)
@@ -107,7 +122,7 @@ class GymEnvWrapper:
 class ContinuousPendulumEnvWrapper(GymEnvWrapper):
 
     def __init__(self, renderingMode):
-        pendulum = gym.make("Pendulum-v0")
+        pendulum = NormalizedEnv(gym.make("Pendulum-v0"))
         pendulum.spec.max_episode_steps = 999
         pendulum.spec.tags["wrapper_config.TimeLimit.max_episode_steps"] = pendulum.spec.max_episode_steps
         GymEnvWrapper.__init__(self, pendulum, renderingMode=renderingMode)

@@ -10,6 +10,7 @@ class BaseArgs:
         self.maxEpochs = 0
         self.envIndex = 0
         self.algoIndex = 0
+        self.tau = 0
 
         # Overwrite defaults with json params
         for k, v in argsFromJson.items():
@@ -20,7 +21,9 @@ class BaseArgs:
         self.maxEpisodes = self.maxEpisodes if cmdlnArgs.maxEpisodes is None else cmdlnArgs.maxEpisodes
         self.envIndex = self.envIndex if cmdlnArgs.envIndex is None else cmdlnArgs.envIndex
         self.algoIndex = self.algoIndex if cmdlnArgs.algoIndex is None else cmdlnArgs.algoIndex
+        self.tau = self.tau if cmdlnArgs.tau is None else cmdlnArgs.tau
         self.verbose = cmdlnArgs.verbose
+        self.shouldTestOnly = cmdlnArgs.testonly
 
 
 class BaseArgsParser:
@@ -32,6 +35,7 @@ class BaseArgsParser:
         self.cmdlnParser.add_argument("--algoIndex", metavar="algoIndex", type=int, help="")
         self.cmdlnParser.add_argument("--tau", metavar="tau", type=float, help="")
         self.cmdlnParser.add_argument("--verbose", action="store_true", help="")
+        self.cmdlnParser.add_argument("--testonly", action="store_true", help="")
 
     def ParseArgs(self, jsonfilepath=None, argsList=None):
         jsonargs = {} if jsonfilepath is None else self.GetJsonArgs(jsonfilepath)

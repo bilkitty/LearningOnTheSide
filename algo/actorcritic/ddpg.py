@@ -1,10 +1,6 @@
-import torch
-import torch.nn as nn
-import numpy as np
 from torch.autograd import Variable
 from timeit import default_timer as timer
 
-from environments import *
 from memory import *
 from metrics import *
 from .nnModels import *
@@ -21,13 +17,11 @@ class DdpgAgent(ModelFreeAgent):
     def __init__(self, maxEpisodes, maxEpochs, gamma, tau, batchSize):
         """
         args:
-            envWrapper      obj         a wrapper containing gym environment
-            gamma           float       reward discount rate
-            tau             float       soft update rate for target networks
-            hSize           int         width of all hidden layers
-            alRate          float       learning rate for actor optimization
-            clRate          float       learning rate for critic optimization
-            bSize           int         sample size for updates using replay
+            int         maxEpisodes     limit of rollouts
+            int         maxEpochs       limit of time steps in rollouts
+            float       gamma           reward discount rate
+            float       tau             soft update rate for target networks
+            int         bSize           sample size for updates using replay
 
         """
 
@@ -48,17 +42,59 @@ class DdpgAgent(ModelFreeAgent):
 
     def Initialize(self, envWrapper, maxMemorySize, hiddenSize, actorLearningRate, criticLearningRate):
         """
-        In the future, it would be awesome to create an agent that is less dependent on the training/test environment.
-            The arch of the neural networks used by this agent is determined by action and state space size
-            Similarly for the noise process
+        args:
+            obj         envWrapper      wrapper containing gym env
+            int         hiddenSize      width of all hidden layers
+            float       alRate          learning rate for actor optimization
+            float       clRate          learning rate for critic optimization
 
-        So, how can these internal components be made more generic? Map specific action/state spaces to a more
-        general interface? What are possible ways to "normalize"?
+
+            In the future, it would be awesome to create an agent that is less dependent on the training/test
+            environment.
+                The arch of the neural networks used by this agent is determined by action and state space size
+                Similarly for the noise process
+
+            So, how can these internal components be made more generic? Map specific action/state spaces to a
+            more general interface? What are possible ways to "normalize"?
         """
         self.SetupNetworks(envWrapper, hiddenSize)
         self.SetupOptimizers(actorLearningRate, criticLearningRate)
         self.SetupNoiseProcess(envWrapper)
         self.experiences = Memory(maxMemorySize)
+
+    def Update(self):
+        return self.__UpdateWithReplay__()
+
+    def SaveExperience(self, state, action, nextState, reward, done):
+        # TODO: [expmt] try spacing these out?
+        self.experiences.push(state=state, action=action, reward=reward, next_state=nextState, done=done)
+
+    def GetBestAction(self, state):
+        state = Variable(torch.from_numpy(state).float())
+        action = self.actor.forward(state)
+        action = action.detach().numpy()
+        return action
+
+    def GetAction(self, state, offset=0):
+        assert(self.noiseProcess is not None)
+        action = self.GetBestAction(state)
+        action = self.noiseProcess.get_action(action, offset)
+        return action
+
+    def GetValue(self, state, action):
+        s = torch.FloatTensor(state).unsqueeze(0)
+        a = torch.FloatTensor(action).unsqueeze(0)
+        return self.critic.forward(s, a).detach().squeeze(0).numpy()[0]
+
+    def SaveLearntModel(self, filepath):
+        DdpgAgent.__SaveNnModelsAndOptimizers__(filepath, self)
+
+    def LoadLearntModel(self, filepath):
+        raise NotImplementedError
+
+#
+# Internal functions
+#
 
     def SetupNetworks(self, envWrapper, hiddenSize):
         assert(0 <= hiddenSize)
@@ -91,15 +127,6 @@ class DdpgAgent(ModelFreeAgent):
 
     def SetupNoiseProcess(self, envWrapper, mu=0):
         self.noiseProcess = OUStrategy(envWrapper.env.action_space, mu)
-
-    def SaveNnModelsAndOptimizers(self):
-        """
-        https: // pytorch.org / tutorials / beginner / saving_loading_models.html  # saving-loading-model-for-inference
-        """
-        raise NotImplementedError
-
-    def LoadNnModelsAndOptimizers(self):
-        raise NotImplementedError
 
     def __UpdateWithReplay__(self):
         assert(self.experiences is not None)
@@ -145,25 +172,20 @@ class DdpgAgent(ModelFreeAgent):
     def __UpdateWithoutReplay__(self):
         raise NotImplementedError
 
-    def Update(self):
-        return self.__UpdateWithReplay__()
+#
+# Auxiliary functions
+#
 
-    def SaveExperience(self, state, action, nextState, reward, done):
-        self.experiences.push(state, action, reward, nextState, done)  # TODO: [expmt] try spacing these out?
+    @staticmethod
+    def __SaveNnModelsAndOptimizers__(filepath, ddpga):
+        """
+        https: // pytorch.org / tutorials / beginner / saving_loading_models.html  # saving-loading-model-for-inference
+        """
+        raise NotImplementedError
 
-    def GetAction(self, state, shouldAddNoise=False, offset=0):
-        assert(self.noiseProcess is not None)
-        state = Variable(torch.from_numpy(state).float())
-        action = self.actor.forward(state)
-        action = action.detach().numpy()
-        if shouldAddNoise:
-            action = self.noiseProcess.get_action(action, offset)
-        return action
-
-    def GetValue(self, state, action):
-        s = torch.FloatTensor(state).unsqueeze(0)
-        a = torch.FloatTensor(action).unsqueeze(0)
-        return self.critic.forward(s, a).detach().squeeze(0).numpy()[0]
+    @staticmethod
+    def __LoadNnModelsAndOptimizers__(filepath):
+        raise NotImplementedError
 
     def Train(self, envWrapper, gamma, tau, hiddenSize, actorLearningRate, criticLearningRate, batchSize, verbose=True):
         """

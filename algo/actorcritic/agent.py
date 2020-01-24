@@ -14,8 +14,17 @@ class ModelFreeAgent:
         raise NotImplementedError
 
     # TODO: should use **kwargs? What does that usually mean?
-    def GetAction(self, state, shouldAddNoise=True):
+    def GetBestAction(self, state):
+        raise NotImplementedError
+
+    def GetAction(self, state):
         raise NotImplementedError
 
     def GetValue(self, state, action):
+        raise NotImplementedError
+
+    def SaveLearntModel(self, filepath):
+        raise NotImplementedError
+
+    def LoadLearntModel(self, filepath):
         raise NotImplementedError
