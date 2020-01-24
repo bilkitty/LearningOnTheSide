@@ -47,9 +47,9 @@ class DdpgAgent(ModelFreeAgent):
         self.experiences = Memory(maxMemorySize)
         self.lossFunction = nn.MSELoss()
 
-        self.SetupNetworks(envWrapper, hiddenSize)
-        self.SetupOptimizers(actorLearningRate, criticLearningRate)
-        self.SetupNoiseProcess(envWrapper)
+        #self.SetupNetworks(envWrapper, hiddenSize)
+        #self.SetupOptimizers(actorLearningRate, criticLearningRate)
+        #self.SetupNoiseProcess(envWrapper)
 
     def SetupNetworks(self, envWrapper, hiddenSize):
         assert(0 <= hiddenSize)
@@ -188,7 +188,7 @@ class DdpgAgent(ModelFreeAgent):
             state = envWrapper.Reset()
             start = timer()
             while not done and epoch < self.maxEpochs:
-                action = self.GetAction(state, 0)                           # TODO: need to "normalize"? hmmm :/
+                action = self.GetAction(state)                           # TODO: need to "normalize"? hmmm :/
                 nextState, reward, done, _ = envWrapper.Step(action)
 
                 self.experiences.push(state, action, reward, nextState, done)   # TODO: [expmt] try spacing these out?
@@ -225,7 +225,7 @@ class DdpgAgent(ModelFreeAgent):
             state = envWrapper.Reset()
             start = timer()
             while not done and epoch < self.maxEpochs:
-                action = self.GetAction(state, 0, shouldAddNoise=False)
+                action = self.GetAction(state, shouldAddNoise=False)
                 nextState, reward, done, _ = envWrapper.Step(action)
 
                 epoch += 1

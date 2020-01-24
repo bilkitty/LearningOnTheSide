@@ -92,7 +92,13 @@ def main():
         clr = args.criticLearningRate
         print(f"DDPG\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}")
         print(f"  hiddenLayerSize={hiddenSize}\n  gamma={discountRate}\n  batchSize={batchSize}")
-        ddpga = DdpgAgent(maxMemorySize=50000, maxEpisodes=maxEpisodes, maxEpochs=maxEpochs)
+        ddpga = DdpgAgent(env, maxMemorySize=50000, maxEpisodes=maxEpisodes, maxEpochs=maxEpochs,
+                                                  gamma=discountRate,
+                                                  tau=memoryRate,
+                                                  hiddenSize=hiddenSize,
+                                                  actorLearningRate=alr,
+                                                  criticLearningRate=clr,
+                                                  batchSize=batchSize)
         resultsTrain, globalRuntime = ddpga.Train(env,
                                                   gamma=discountRate,
                                                   tau=memoryRate,
