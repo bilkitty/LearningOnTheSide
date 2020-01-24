@@ -4,6 +4,7 @@ from collections import defaultdict
 from timeit import default_timer as timer
 from utils import *
 from metrics import *
+from memory import Memory
 
 DEFAULT_ALPHA = 0.6
 DEFAULT_EPSILON = 0.1
@@ -14,46 +15,154 @@ DEFAULT_MAX_EPISODES = 100000
 
 """
 TODO: Desc
+
+Note that the qtable is a dictionary that provides default values states not found in table.
 """
+
+
+class QTable:
+    def __init__(self, envWrapper):
+        self._table = defaultdict(lambda: np.zeros(envWrapper.ActionSpaceN()))
+        self.numActions = envWrapper.ActionSpaceN()
+
+    def GetValue(self, state, action):
+        assert(isinstance(action, np.int32) or isinstance(action, np.int64))
+        if isinstance(state, np.ndarray): state = tuple(state)
+        return self._table[state][action]
+
+    def GetMaxValue(self, state):
+        if isinstance(state, np.ndarray): state = tuple(state)
+        return np.max(self._table[state])
+
+    def GetArgMax(self, state):
+        if isinstance(state, np.ndarray): state = tuple(state)
+        return np.argmax(self._table[state])
+
+    def SetValue(self, state, action, value):
+        assert(isinstance(action, np.int32) or isinstance(action, np.int64))
+        if isinstance(state, np.ndarray): state = tuple(state)
+        self._table[state][action] = value
+
+    def GetTable(self):
+        return dict(self._table)
 
 
 class QLearningAgent:
 
-    def __init__(self):
+    def __init__(self,
+                 epsilon=DEFAULT_EPSILON,
+                 gamma=DEFAULT_GAMMA,
+                 alpha=DEFAULT_ALPHA,
+                 maxEpisodes=DEFAULT_MAX_EPISODES,
+                 maxEpochs=DEFAULT_MAX_EPOCHS,
+                 batchSize=1):
         """
-        inputs:
-            n/a
+        args:
+            float       epsilon       probability of random action selection
+            float       gamma         reward discount rate
+            float       alpha         learning rate for q updates
+            int         maxEpisodes   max number of episodes allowed
+            int         maxEpochs     max number of time steps allowed
+            int         batchSize     number of samples to collection from past experience
         return:
             n/a
         """
-        self.epsilon = DEFAULT_EPSILON
-        self.gamma = DEFAULT_GAMMA
-        self.alpha = DEFAULT_ALPHA
-        self.maxEpisodes = DEFAULT_MAX_EPISODES
-        self.maxEpochs = DEFAULT_MAX_EPOCHS
+        self.epsilon = epsilon
+        self.gamma = gamma
+        self.alpha = alpha
+        self.maxEpisodes = maxEpisodes
+        self.maxEpochs = maxEpochs
+        self.batchSize = batchSize
 
         self.qTable = None
+        self.experiences = None
+        self.policy = None
         return
 
     # TODO: get rid of train and test; supplant with getaction(), update(),...
 
-    def GetAction(self):
-        # TODO: return action based on state
-        return NotImplemented
+    def Initialize(self, envWrapper, maxMemorySize, qTable=None):
+        """
+        args:
+            obj      envWrapper    wrapper containing gym env
+            int      maxMemorySize size limit for experience buffer
+        return:
+            n/a
+        """
+        self.experiences = Memory(maxMemorySize)
+        self.qTable = QTable(envWrapper)
+        if qTable is None: qTable = self.qTable
+        self.policy = QLearningAgent.CreatePolicyFunction(qTable, self.epsilon)
 
     def Update(self):
-        # TODO: return action based on state
-        return NotImplemented
+        # TODO: make compatible with variable batch sizes
+        state, action, nextState, reward, _ = self.experiences.getLatest()
+
+        nextHighestQ = self.qTable.GetMaxValue(nextState)
+        q = self.qTable.GetValue(state, action)
+        newQ = (1 - self.alpha) * q + self.alpha * (reward + self.gamma * nextHighestQ)
+        self.qTable.SetValue(state, action, newQ)
+
+    def SaveExperience(self, state, action, nextState, reward, done):
+        # TODO: [expmt] try spacing these out?
+        self.experiences.push(state=state, action=action, reward=reward, next_state=nextState, done=done)
+
+    def GetBestAction(self, state):
+        return self.qTable.GetArgMax(state)
+
+    def GetAction(self, state):
+        return self.policy(state)
+
+    def GetValue(self, state, action):
+        return self.qTable.GetValue(state, action)
+
+    def SaveLearntModel(self, filepath):
+        valsToSave = self.qTable.GetTable()
+        raise NotImplementedError
+
+    def LoadLearntModel(self, filepath):
+        raise NotImplementedError
+
+    @staticmethod
+    def CreatePolicyFunction(qt, epsilon):
+        """
+        args:
+            QTable  qt          an LUT of action-values per state
+        return:
+                    func        function that generates action based on state
+        """
+        def EpsilonGreedyPolicy(s):
+            if random.uniform(0, 1) < epsilon:
+                a = np.random.choice(np.arange(qt.numActions))
+            else:
+                a = qt.GetArgMax(s)
+
+            return a
+
+        return EpsilonGreedyPolicy
+
+    @staticmethod
+    def PlotValues():
+        """
+        args:
+            envType ?
+            qTable  dict
+        return:
+                    figure  figure containing plots of q-values for particular states
+        """
+
+        # TODO: how to represent states generically? What aspects in the env are useful for
+        #       deciding how to interpret state info?
 
     def Train(self, env, policy, verbose=False):
         """
-        inputs:
-            env      obj           openai gym environment
-            policy   func          a function that selects env actions in some way
-            verbose  bool          (optional) enables console output when True
+        args:
+            env          obj           openai gym environment
+            policy       func          a function that selects env actions in some way
+            verbose      bool          (optional) enables console output when True
         return:
-                     Metrics  performance results like timesteps, rewards, penalties, etc. per episode
-                     float    global training runtime
+                         Metrics       performance results like timesteps, rewards, penalties, etc. per episode
+                         float         global training runtime
         """
         # Any newly seen state will be assigned q-values of zero for all states
         self.qTable = defaultdict(lambda: np.zeros(env.ActionSpaceN()))
@@ -113,13 +222,13 @@ class QLearningAgent:
 
     def Evaluate(self, env, qTable=None, verbose=False):
         """
-        inputs:
-            env      obj           openai gym environment
-            qTable   dict          (optional) an LUT for best actions for every state
-            verbose  bool          (optional) enables console output when True
+        args:
+            env          obj           openai gym environment
+            qTable       dict          (optional) an LUT for best actions for every state
+            verbose      bool          (optional) enables console output when True
         return:
-                     Metrics  performance results like timesteps, rewards, penalties, etc. per episode
-                     float    global test runtime
+                         Metrics       performance results like timesteps, rewards, penalties, etc. per episode
+                         float         global test runtime
         """
         if qTable is None:
             assert self.qTable is not None
@@ -174,70 +283,4 @@ class QLearningAgent:
             env.Close()
 
         return episodicMetrics, timer() - globalStart
-
-    def CreatePolicyFunction(self, qTable=None):
-        """
-        inputs:
-            dict    qTable        an LUT of action-values per state
-        return:
-                    func    function that generates action based on state
-        """
-        def EpsilonGreedyPolicy(s):
-            assert(self.qTable is not None or qTable is not None)
-            actions = self.qTable[s] if qTable is None else qTable[s]
-
-            if random.uniform(0, 1) < self.epsilon:
-                a = np.random.choice(np.arange(len(actions)))
-            else:
-                a = np.argmax(actions)
-
-            return a
-
-        return EpsilonGreedyPolicy
-
-    def SetParameters(self,
-                      epsilon=DEFAULT_EPSILON,
-                      gamma=DEFAULT_GAMMA,
-                      alpha=DEFAULT_ALPHA,
-                      maxEpisodes=DEFAULT_MAX_EPISODES,
-                      maxEpochs=DEFAULT_MAX_EPOCHS):
-        """
-        inputs:
-            float   epsilon       probability of random action selection
-            float   gamma         reward discount rate
-            float   alpha         learning rate for q updates
-            int     maxEpisodes   max number of episodes allowed
-            int     maxEpochs     max number of time steps allowed
-        return:
-            n/a
-        """
-        self.epsilon = epsilon
-        self.gamma = gamma
-        self.alpha = alpha
-        self.maxEpisodes = maxEpisodes
-        self.maxEpochs = maxEpochs
-        return
-
-    def QValues(self):
-        """
-        inputs:
-            n/a
-        return:
-                    dict    contains the rows of virtual mxn q-value table for m states and n actions
-        """
-        assert self.qTable is not None
-        return dict(self.qTable)
-
-    @staticmethod
-    def PlotActionValues():
-        """
-        inputs:
-            envType ?
-            qTable  dict
-        return:
-                    figure  figure containing plots of q-values for particular states
-        """
-
-        # TODO: how to represent states generically? What aspects in the env are useful for
-        #       deciding how to interpret state info?
 

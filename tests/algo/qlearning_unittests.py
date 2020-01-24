@@ -7,92 +7,57 @@ from visualise import *
 from environments import EnvTypes, EnvWrapperFactory
 
 # Use this to toggle rendering AND console output
-VERBOSE = False
-I_TIMEOUT=100
+MAX_MEMORY_SIZE = 1
 TEST_QTABLE_PKL = os.path.join(utils.GetRootProjectPath(), "tests/data/qtable.pkl")
-QTABLE = utils.LoadFromPickle(TEST_QTABLE_PKL)
-
-#TODO: keep track of instantiated environments and ensure they are closed before exiting in tearDown()
+MOCK_QTABLE = utils.LoadFromPickle(TEST_QTABLE_PKL)
 
 
 class TestQlearningSteps(unittest.TestCase):
+    def setUp(self):
+        self.qla = QLearningAgent(maxEpisodes=1, maxEpochs=1000)
+        self.testEnvs = [EnvWrapperFactory(EnvTypes.CartPoleEnv),
+                         EnvWrapperFactory(EnvTypes.TaxiGridEnv),
+                         EnvWrapperFactory(EnvTypes.WindyGridEnv),
+                         EnvWrapperFactory(EnvTypes.AcroBotEnv),
+                         EnvWrapperFactory(EnvTypes.MountainCarEnv)]
 
-    def SingleTrainCycle(self, env):
-        qla = QLearningAgent()
-        qla.SetParameters(maxEpisodes=1, maxEpochs=10000)
-        policy = qla.CreatePolicyFunction()
-        results, time = qla.Train(env, policy, verbose=VERBOSE)
-        self.assertEqual(len(results), 1)
-        for i, res in enumerate(results):
-            self.assertNotEqual(res, None, msg=f"result {i} is 'None'")
+    def tearDown(self):
+        for env in self.testEnvs:
+            env.Close()
 
-        env.Close()
+    def test_Initialization(self):
+        for env in self.testEnvs:
+            self.qla.Initialize(env, MAX_MEMORY_SIZE)
+            self.assertIsNotNone(self.qla.qTable)
+            self.assertIsNotNone(self.qla.experiences)
+            self.assertIsNotNone(self.qla.experiences)
 
-    def SingleTestCycle(self, env):
-        qla = QLearningAgent()
-        qla.SetParameters(maxEpisodes=1, maxEpochs=10000)
-        results, time = qla.Evaluate(env, QTABLE, verbose=VERBOSE)
-        self.assertEqual(len(results), 1)
-        for i, res in enumerate(results):
-            self.assertNotEqual(res, None, msg=f"result {i} is 'None'")
+        self.qla.Initialize(self.testEnvs[0], MAX_MEMORY_SIZE, MOCK_QTABLE)
 
-        env.Close()
+    def test_GetValue(self):
+        for env in self.testEnvs:
+            self.qla.Initialize(env, MAX_MEMORY_SIZE)
+            s = env.Reset()
+            a = self.qla.GetBestAction(s)
+            self.assertIsNotNone(self.qla.GetValue(s, a))
 
-    def test_SingleTrainCycleOnWindy(self):
-        self.SingleTrainCycle(EnvWrapperFactory(EnvTypes.WindyGridEnv))
+    def test_GetBestAction(self):
+        for env in self.testEnvs:
+            self.qla.Initialize(env, MAX_MEMORY_SIZE)
+            s = env.Reset()
+            a = self.qla.GetBestAction(s)
+            env.Step(a)
+            qa = self.qla.GetValue(s, a)
+            qb = self.qla.GetValue(s, self.qla.GetBestAction(s))
+            self.assertEqual(qa, qb)
 
-    def test_SingleTrainCycleOnTaxi(self):
-        self.SingleTrainCycle(EnvWrapperFactory(EnvTypes.TaxiGridEnv))
-
-    def test_SingleTrainCycleOnCartPole(self):
-        self.SingleTrainCycle(EnvWrapperFactory(EnvTypes.CartPoleEnv))
-
-    def test_SingleTrainCycleOnAcroBot(self):
-        self.SingleTrainCycle(EnvWrapperFactory(EnvTypes.AcroBotEnv))
-
-    def test_SingleTrainCycleOnMountainCar(self):
-        self.SingleTrainCycle(EnvWrapperFactory(EnvTypes.MountainCarEnv))
-
-    def test_SingleEvaluationCycleOnWindy(self):
-        self.SingleTestCycle(EnvWrapperFactory(EnvTypes.WindyGridEnv))
-
-    def test_SingleEvaluationCycleOnTaxi(self):
-        self.SingleTestCycle(EnvWrapperFactory(EnvTypes.TaxiGridEnv))
-
-    def test_SingleEvaluationCycleOnCartPole(self):
-        self.SingleTestCycle(EnvWrapperFactory(EnvTypes.CartPoleEnv))
-
-    def test_SingleEvaluationCycleOnAcroBot(self):
-        self.SingleTestCycle(EnvWrapperFactory(EnvTypes.AcroBotEnv))
-
-    def test_SingleEvaluationCycleOnMountainCar(self):
-        self.SingleTestCycle(EnvWrapperFactory(EnvTypes.MountainCarEnv))
-
-    def test_CreatePolicyFunction(self):
-        # Setup mock q-table
-        abest = 0
-        state = "s0"
-        mockqtable = defaultdict(lambda: np.zeros(3))
-        mockqtable[state][abest] = 1
-
-        # Setup agent that never explores
-        qla = QLearningAgent()
-        qla.SetParameters(epsilon=0, maxEpisodes=1, maxEpochs=1)
-        purelyExploitPolicy = qla.CreatePolicyFunction(mockqtable)
-        a = purelyExploitPolicy(state)
-        self.assertEqual(a, abest)
-
-        # Setup agent that never exploits
-        qla.SetParameters(epsilon=1, maxEpisodes=1, maxEpochs=1)
-        purelyExplorePolicy = qla.CreatePolicyFunction(mockqtable)
-        a = purelyExplorePolicy(state)
-        # betting that best action isn't chosen multiple in a row?
-        for i in np.arange(I_TIMEOUT):
-            a = purelyExplorePolicy(state)
-            if a != abest or I_TIMEOUT < i:
-                break
-
-        self.assertNotEqual(a, abest)
+    def test_GetAction(self):
+        for env in self.testEnvs:
+            self.qla.Initialize(env, MAX_MEMORY_SIZE)
+            a = self.qla.GetAction(env.Reset())
+            env.Step(a)
+            # We don't do a test for parity of actions or action values b/c
+            # this test would likely break for small discrete action spaces
 
 
 if __name__ == "__main__":
