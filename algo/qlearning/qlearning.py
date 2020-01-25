@@ -96,7 +96,7 @@ class QLearningAgent:
 
     def Update(self):
         # TODO: make compatible with variable batch sizes
-        state, action, nextState, reward, _ = self.experiences.getLatest()
+        state, action, reward, nextState, _ = self.experiences.getLatest()
 
         nextHighestQ = self.qTable.GetMaxValue(nextState)
         q = self.qTable.GetValue(state, action)

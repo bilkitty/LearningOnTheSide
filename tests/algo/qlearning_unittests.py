@@ -8,7 +8,7 @@ from environments import EnvTypes, EnvWrapperFactory
 
 # Use this to toggle rendering AND console output
 MAX_MEMORY_SIZE = 1
-TEST_QTABLE_PKL = os.path.join(utils.GetRootProjectPath(), "tests/data/qtable.pkl")
+TEST_QTABLE_PKL = os.path.join(utils.GetRootProjectPath(), "tests/data/test.pkl")
 MOCK_QTABLE = utils.LoadFromPickle(TEST_QTABLE_PKL)
 
 

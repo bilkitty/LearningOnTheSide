@@ -3,21 +3,14 @@ import numpy as np
 
 from utils import *
 from rollouts import *
+from args import *
 from baseargs import BaseArgsParser
 from actorcritic.ddpg import DdpgAgent
 from qlearning.qlearning import QLearningAgent
 from environments import EnvTypes, EnvWrapperFactory
 from visualise import PlotPerformanceResults, SaveFigure
 
-SHOULD_REUSE_QTABLE = False
-SHOULD_PLOT = True
-
-LEARNING_RATE = 0.1
-DISCOUNT_RATE = 0.6
-EPSILON = 0.1
-# TODO: understand how this hidden size should be set. Seems env dependent (specifically, action space)?
-NN_HIDDEN_SIZE = 1
-BATCH_SIZE = 128
+MAX_MEMORY_SIZE = 50000
 PARAM_FILE = os.path.join(GetRootProjectPath(), "gymrunner/params.json")
 
 ENVS = [EnvTypes.WindyGridEnv, EnvTypes.TaxiGridEnv, EnvTypes.CartPoleEnv,
@@ -33,15 +26,15 @@ def main():
     into array. Need to use different data structure that'll support different state reps,
     but also be friendly for visualization.
     """
-    parser = BaseArgsParser("General algorithm arguments")
-    args = parser.ParseArgs(PARAM_FILE)
-    envIndex = args.envIndex
-    algoIndex = args.algoIndex
-    maxEpisodes = args.maxEpisodes
-    maxEpochs = args.maxEpochs
-    verbose = args.verbose
-    shouldTestOnly = args.shouldTestOnly
-    postfix = args.desc
+    baseArgs = BaseArgsParser().ParseArgs(PARAM_FILE)
+    envIndex = baseArgs.envIndex
+    algoIndex = baseArgs.algoIndex
+    maxEpisodes = baseArgs.maxEpisodes
+    maxEpochs = baseArgs.maxEpochs
+    verbose = baseArgs.verbose
+    shouldTestOnly = baseArgs.shouldTestOnly
+    shouldSkipPlots = baseArgs.shouldSkipPlots
+    postfix = baseArgs.desc
 
     if envIndex < 0 or len(ENVS) <= envIndex:
         print(f"Invalid env selected '{envIndex}'")
@@ -59,53 +52,40 @@ def main():
         print("Bruteforcing it")
         print("Finished search")
         return 0
-    elif algoType.lower() == "qlearning":
-        # TODO: update calls
-        print(f"Q-learning it\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}")
-        print(f"\n  epsilon={EPSILON}\n  gamma={DISCOUNT_RATE}\n  alpha={LEARNING_RATE}\n")
-        agent = QLearningAgent()
-        agent.SetParameters(EPSILON, DISCOUNT_RATE, LEARNING_RATE, maxEpisodes, maxEpochs)
-        policy = agent.CreatePolicyFunction()
-        # load q-table if available
-        qTableFile = f"{ENVS[envIndex]}_qtable.pkl"
-        if SHOULD_REUSE_QTABLE and os.path.exists(qTableFile):
-            qTable = LoadFromPickle(qTableFile)
-            print("Loaded q-table")
-            resultsTrain = None
-            resultsTest, globalRuntime = agent.Evaluate(env, qTable, verbose=verbose)
-        else:
-            resultsTrain, globalRuntime = agent.Train(env, policy, verbose=verbose)
-            qTable = agent.QValues()
-            SaveAsPickle(qTable, qTableFile)
-            SaveAsPickle(resultsTrain, f"{algoType}_{ENVS[envIndex]}_train_{postfix}.pkl")
-            print(f"Finished training: {globalRuntime: .4f}s")
-            resultsTest, globalRuntime = agent.Evaluate(env, verbose=verbose)
 
-        SaveAsPickle(resultsTest, f"{algoType}_{ENVS[envIndex]}_test_{postfix}.pkl")
-        print(f"Finished evaluation: {globalRuntime: .4f}s")
+    elif algoType.lower() == "qlearning":
+        args = QLearningArgsParser().ParseArgs(PARAM_FILE)
+        print(f"Q-learning it\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}")
+        print(f"\n  epsilon={args.exploreRate}\n  gamma={args.discountRate}\n  alpha={args.learnRate}\n")
+        agent = QLearningAgent(maxEpisodes=maxEpisodes,
+                               maxEpochs=maxEpochs,
+                               epsilon=args.exploreRate,
+                               gamma=args.discountRate,
+                               alpha=args.learnRate,
+                               batchSize=args.batchSize)
+
+        agent.Initialize(env, MAX_MEMORY_SIZE)
+
     elif algoType.lower() == "a2c":
         # TODO: pipe in a2c
         print("nothing to see here...")
+
     elif algoType.lower() == "ddpg":
-        discountRate = args.discountRate
-        hiddenSize = args.hiddenLayerWidth
-        batchSize = args.batchSize
-        memoryRate = args.memoryRate
-        alr = args.actorLearningRate
-        clr = args.criticLearningRate
+        args = DdpgArgsParser().ParseArgs(PARAM_FILE)
         print(f"DDPG\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}")
-        print(f"  hiddenLayerSize={hiddenSize}\n  gamma={discountRate}\n  batchSize={batchSize}")
+        print(f"  hiddenLayerSize={args.hiddenLayerWidth}\n  gamma={args.discountRate}\n  batchSize={args.batchSize}")
         agent = DdpgAgent(maxEpisodes=maxEpisodes,
                           maxEpochs=maxEpochs,
-                          gamma=discountRate,
-                          tau=memoryRate,
-                          batchSize=batchSize)
+                          gamma=args.discountRate,
+                          tau=args.softUpdateRate,
+                          batchSize=args.batchSize)
 
         agent.Initialize(env,
-                         maxMemorySize=50000,
-                         hiddenSize=hiddenSize,
-                         actorLearningRate=alr,
-                         criticLearningRate=clr)
+                         maxMemorySize=MAX_MEMORY_SIZE,
+                         hiddenSize=args.hiddenLayerWidth,
+                         actorLearningRate=args.actorLearnRate,
+                         criticLearningRate=args.criticLearnRate)
+
     else:
         print(f"Unsupported algo type '{algoType}'")
         return 1
@@ -129,7 +109,7 @@ def main():
     # Good practice to close env when finished :)
     env.Close()
 
-    if not SHOULD_PLOT:
+    if shouldSkipPlots:
         return 0
 
     trainDescription = f"{algoType} {ENVS[envIndex]} training results {postfix}"

@@ -8,34 +8,6 @@ algos=(Qlearning DDPG)
 algoType=1
 resultsdir="../data/results/algo_tuning"
 
-# Rerun for pendulum with longer timelimit (overridden in wrapper)
-# Try low tau
-# All configs: h256b128d9t0 h256b20d5t0 h256b128d5t0 h256b20d9t0 h64b128d5t0 h64b128d9t0 h64b20d5t0 h64b20d9t0 h16b128d5t0 h16b128d9t0 h16b20d5t0 h16b20d9t0
-for param in h256b128d9t0 h256b20d5t0 h256b128d5t0 h256b20d9t0 h64b128d5t0 h64b128d9t0 h64b20d5t0 h64b20d9t0 h16b128d5t0 h16b128d9t0 h16b20d5t0 h16b20d9t0
-do
-  echo "Processing $param"
-  tauVal="tau01"
-  trialdir="$resultsdir/pendulum_extended_timeout/$param"
-  paramfile="../data/params/$param.json"
-  mkdir -p $trialdir
-  cp $paramfile "params.json"
-  for env in 5
-  do
-    echo "Running ${algos[$algoType]} in ${names[$env]}"
-    python3 main.py --envIndex $env --algoIndex $algoType > log.txt
-    if [ $? -eq 0 ]
-    then
-      mv *.png $trialdir
-      mv *.pkl $trialdir
-      mv log.txt $trialdir/${algos[$algoType]}_${names[$env]}_log.txt
-      cp "params.json" "$trialdir/params_$tauVal.json"
-    else
-      echo "Failed with exit code: $?"
-    fi
-    echo "==================================="
-  done
-done
-
 # Try low tau
 # All configs: h256b128d9t0 h256b20d5t0 h256b128d5t0 h256b20d9t0 h64b128d5t0 h64b128d9t0 h64b20d5t0 h64b20d9t0 h16b128d5t0 h16b128d9t0 h16b20d5t0 h16b20d9t0
 for param in h256b128d5t0 h256b20d9t0 h64b128d5t0 h64b128d9t0 h16b20d5t0 h16b20d9t0

@@ -7,6 +7,7 @@ Commandline Helpers
 """
 
 def LoadFromJsonFile(jsonfilepath):
+    assert os.path.exists(jsonfilepath)
     with open(jsonfilepath, "rb") as f:
         _s = f.read()
         argmap = json.loads(_s.decode())
@@ -37,6 +38,7 @@ Checkpoint Helpers
 """
 
 def LoadFromPickle(filepath):
+    assert os.path.exists(filepath)
     f = open(filepath, "rb")
     contents = pkl.load(f)
     return contents

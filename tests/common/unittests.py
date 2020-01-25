@@ -92,19 +92,16 @@ class TestArgsParser(unittest.TestCase):
             f.write("{\"arg0\": 1, \"arg1\": 42.4242, \"arg3\": \"type0\"}".encode())
             f.close()
 
-        self.parser = BaseArgsParser("test args")
+        self.parser = BaseArgsParser()
 
     def test_ParseArgs(self):
         args = self.parser.ParseArgs(TEST_ARGS_JSON, MOCK_ARGS_CMDLN)
         self.assertIsNotNone(args.arg0)
         self.assertIsNotNone(args.arg1)
         self.assertIsNotNone(args.envIndex)
-
-    def test_GetJsonArgs(self):
-        argDict = self.parser.GetJsonArgs(TEST_ARGS_JSON)
-        self.assertEqual(argDict["arg0"], 1)
-        self.assertEqual(argDict["arg1"], 42.4242)
-        self.assertEqual(argDict["arg3"], "type0")
+        self.assertEqual(args.arg0, 1)
+        self.assertEqual(args.arg1, 42.4242)
+        self.assertEqual(args.arg3, "type0")
 
 
 if __name__ == "__main__":
