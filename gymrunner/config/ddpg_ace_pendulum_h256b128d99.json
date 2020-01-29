@@ -1,7 +1,7 @@
 {
-  "desc": "rand_reset",
+  "desc": "ddpg_ace_pendulum_h256b128d99",
   "maxEpisodes": 50,
-  "maxEpochs": 100000,
+  "maxEpochs": 500,
   "algoIndex": 1,
   "envIndex": 5,
   "discountRate": 0.99,

@@ -22,11 +22,6 @@ ALGOS = ["qlearning", "ddpg"]
 
 
 def main():
-    """
-    Currently does not support cartpole environment because the state is used as an index
-    into array. Need to use different data structure that'll support different state reps,
-    but also be friendly for visualization.
-    """
     baseArgs = BaseArgsParser().ParseArgs(PARAM_FILE)
     envIndex = baseArgs.envIndex
     algoIndex = baseArgs.algoIndex
@@ -61,7 +56,7 @@ def main():
     elif algoType.lower() == "qlearning":
         args = QLearningArgsParser().ParseArgs(PARAM_FILE)
         header += f"Q-learning\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}\n"
-        header += f"\n  epsilon={args.exploreRate}\n  gamma={args.discountRate}\n  alpha={args.learnRate}\n"
+        header += f"  epsilon={args.exploreRate}\n  gamma={args.discountRate}\n  alpha={args.learnRate}\n"
         agent = QLearningAgent(maxEpisodes=maxEpisodes,
                                maxEpochs=maxEpochs,
                                epsilon=args.exploreRate,
