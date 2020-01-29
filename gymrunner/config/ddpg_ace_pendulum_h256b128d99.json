@@ -1,0 +1,18 @@
+{
+  "desc": "rand_reset",
+  "maxEpisodes": 50,
+  "maxEpochs": 100000,
+  "algoIndex": 1,
+  "envIndex": 5,
+  "discountRate": 0.99,
+
+  "exploreRate": 0.1,
+  "learnRate": 0.1,
+
+  "hiddenLayerWidth": 256,
+  "batchSize": 128,
+  "softUpdateRate": 0.01,
+  "noiseShift": 0.3,
+  "actorLearningRate": 1e-4,
+  "criticLearningRate": 1e-3
+}

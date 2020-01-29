@@ -34,6 +34,25 @@ class EnvTypes:
     ContinuousPendulumEnv = "ContinuousPendulum"
 
 
+def EnvWrapperFactory(envType, renderingMode=RENDERING_MODE, isDeterministic=False):
+    if envType == EnvTypes.WindyGridEnv:
+        return WindyGridEnvWrapper(renderingMode, isDeterministic)
+    elif envType == EnvTypes.TaxiGridEnv:
+        return TaxiGridEnvWrapper(renderingMode, isDeterministic)
+    elif envType == EnvTypes.CartPoleEnv:
+        return CartPoleEnvWrapper(renderingMode, isDeterministic)
+    elif envType == EnvTypes.AcroBotEnv:
+        return AcrobotEnvWrapper(renderingMode, isDeterministic)
+    elif envType == EnvTypes.MountainCarEnv:
+        return MountainCarEnvWrapper(renderingMode, isDeterministic)
+    elif envType == EnvTypes.ContinuousMountainCarEnv:
+        return ContinuousMountainCarEnvWrapper(renderingMode, isDeterministic)
+    elif envType == EnvTypes.ContinuousPendulumEnv:
+        return ContinuousPendulumEnvWrapper(renderingMode, isDeterministic)
+    else:
+        raise NameError(f"Unsupported environment type '{envType}'")
+
+
 # https://github.com/openai/gym/blob/master/gym/core.py
 class NormalizedEnv(gym.ActionWrapper):
     """ Wrap action """
@@ -52,29 +71,11 @@ class NormalizedEnv(gym.ActionWrapper):
         return act_k_inv * (action - act_b)
 
 
-def EnvWrapperFactory(envType, renderingMode=RENDERING_MODE):
-    if envType == EnvTypes.WindyGridEnv:
-        return WindyGridEnvWrapper(renderingMode)
-    elif envType == EnvTypes.TaxiGridEnv:
-        return TaxiGridEnvWrapper(renderingMode)
-    elif envType == EnvTypes.CartPoleEnv:
-        return CartPoleEnvWrapper(renderingMode)
-    elif envType == EnvTypes.AcroBotEnv:
-        return AcrobotEnvWrapper(renderingMode)
-    elif envType == EnvTypes.MountainCarEnv:
-        return MountainCarEnvWrapper(renderingMode)
-    elif envType == EnvTypes.ContinuousMountainCarEnv:
-        return ContinuousMountainCarEnvWrapper(renderingMode)
-    elif envType == EnvTypes.ContinuousPendulumEnv:
-        return ContinuousPendulumEnvWrapper(renderingMode)
-    else:
-        raise NameError(f"Unsupported environment type '{envType}'")
-
-
 class GymEnvWrapper:
 
-    def __init__(self, gymEnv, renderingMode):
+    def __init__(self, gymEnv, renderingMode, isDeterministic=False):
         self.env = gymEnv
+        self.isDeterministic = isDeterministic
         self.renderingMode = renderingMode
 
     def ActionSpaceN(self):
@@ -90,7 +91,7 @@ class GymEnvWrapper:
             return self.env.observation_space.shape[0]
 
     def Render(self):
-        return self.env.render(self.renderingMode)
+        return self.env.render(mode=self.renderingMode)
 
     def Reset(self):
         return self.env.reset()
@@ -124,11 +125,9 @@ class GymEnvWrapper:
 
 class ContinuousPendulumEnvWrapper(GymEnvWrapper):
 
-    def __init__(self, renderingMode):
-        pendulum = NormalizedEnv(gym.make("Pendulum-v0"))
-        pendulum.spec.max_episode_steps = 999
-        pendulum.spec.tags["wrapper_config.TimeLimit.max_episode_steps"] = pendulum.spec.max_episode_steps
-        GymEnvWrapper.__init__(self, pendulum, renderingMode=renderingMode)
+    def __init__(self, renderingMode, isDeterministic=False):
+        GymEnvWrapper.__init__(self, NormalizedEnv(gym.make("Pendulum-v0")), renderingMode, isDeterministic)
+        self.env.seed(0 if self.isDeterministic else None)
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         return ["torque"]
@@ -153,8 +152,8 @@ class ContinuousPendulumEnvWrapper(GymEnvWrapper):
 
 class ContinuousMountainCarEnvWrapper(GymEnvWrapper):
 
-    def __init__(self, renderingMode):
-        GymEnvWrapper.__init__(self, gym.make("MountainCarContinuous-v0"), renderingMode=renderingMode)
+    def __init__(self, renderingMode, isDeterministic=False):
+        GymEnvWrapper.__init__(self, gym.make("MountainCarContinuous-v0"), renderingMode, isDeterministic)
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         return ["force"]
@@ -183,8 +182,8 @@ class ContinuousMountainCarEnvWrapper(GymEnvWrapper):
 
 class MountainCarEnvWrapper(GymEnvWrapper):
 
-    def __init__(self, renderingMode):
-        GymEnvWrapper.__init__(self, gym.make("MountainCar-v0"), renderingMode=renderingMode)
+    def __init__(self, renderingMode, isDeterministic=False):
+        GymEnvWrapper.__init__(self, gym.make("MountainCar-v0"), renderingMode, isDeterministic)
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         if shouldUseShorthand:
@@ -210,8 +209,8 @@ class MountainCarEnvWrapper(GymEnvWrapper):
 
 class AcrobotEnvWrapper(GymEnvWrapper):
 
-    def __init__(self, renderingMode):
-        GymEnvWrapper.__init__(self, gymEnv=gym.make("Acrobot-v1"), renderingMode=renderingMode)
+    def __init__(self, renderingMode, isDeterministic=False):
+        GymEnvWrapper.__init__(self, gym.make("Acrobot-v1"), renderingMode, isDeterministic)
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         if shouldUseShorthand:
@@ -239,8 +238,8 @@ class AcrobotEnvWrapper(GymEnvWrapper):
 
 class CartPoleEnvWrapper(GymEnvWrapper):
 
-    def __init__(self, renderingMode):
-        GymEnvWrapper.__init__(self, gymEnv=gym.make("CartPole-v1").env, renderingMode=renderingMode)
+    def __init__(self, renderingMode, isDeterministic=False):
+        GymEnvWrapper.__init__(self, gym.make("CartPole-v1").env, renderingMode, isDeterministic)
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         if shouldUseShorthand:
@@ -286,8 +285,8 @@ simplified reward signal might allow the system to waste resources, in this case
 
 class TaxiGridEnvWrapper(GymEnvWrapper):
 
-    def __init__(self, renderingMode):
-        GymEnvWrapper.__init__(self, gymEnv=gym.make("Taxi-v3"), renderingMode=renderingMode)
+    def __init__(self, renderingMode, isDeterministic=False):
+        GymEnvWrapper.__init__(self, gym.make("Taxi-v3"), renderingMode, isDeterministic)
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         if shouldUseShorthand:
@@ -403,8 +402,8 @@ class WindyGridWorldEnv(discrete.DiscreteEnv):
 
 class WindyGridEnvWrapper(GymEnvWrapper):
 
-    def __init__(self, renderingMode):
-        GymEnvWrapper.__init__(self, gymEnv=WindyGridWorldEnv(), renderingMode=renderingMode)
+    def __init__(self, renderingMode, isDeterministic=False):
+        GymEnvWrapper.__init__(self, WindyGridWorldEnv(), renderingMode, isDeterministic)
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         if shouldUseShorthand:
