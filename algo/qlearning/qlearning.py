@@ -46,6 +46,10 @@ class QTable:
     def GetTable(self):
         return dict(self._table)
 
+    def SetTable(self, table):
+        assert(table is not None and isinstance(table, dict))
+        self._table = table
+
 
 class QLearningAgent:
 
@@ -76,7 +80,6 @@ class QLearningAgent:
 
         self.qTable = None
         self.experiences = None
-        self.policy = None
         return
 
     # TODO: get rid of train and test; supplant with getaction(), update(),...
@@ -91,15 +94,15 @@ class QLearningAgent:
         """
         self.experiences = Memory(maxMemorySize)
         self.qTable = QTable(envWrapper)
-        if qTable is None: qTable = self.qTable
-        self.policy = QLearningAgent.CreatePolicyFunction(qTable, self.epsilon)
+        if qTable is not None:
+            self.qTable.SetTable(qTable)
 
     def Update(self):
         # TODO: make compatible with variable batch sizes
         state, action, reward, nextState, _ = self.experiences.getLatest()
 
-        nextHighestQ = self.qTable.GetMaxValue(nextState)
         q = self.qTable.GetValue(state, action)
+        nextHighestQ = self.qTable.GetMaxValue(nextState)
         newQ = (1 - self.alpha) * q + self.alpha * (reward + self.gamma * nextHighestQ)
         self.qTable.SetValue(state, action, newQ)
 
@@ -111,7 +114,13 @@ class QLearningAgent:
         return self.qTable.GetArgMax(state)
 
     def GetAction(self, state):
-        return self.policy(state)
+        assert(self.qTable is not None)
+
+        # Epsilon Greedy Policy
+        if random.uniform(0, 1) < self.epsilon:
+            return np.random.choice(np.arange(self.qTable.numActions))
+        else:
+            return self.qTable.GetArgMax(state)
 
     def GetValue(self, state, action):
         return self.qTable.GetValue(state, action)
@@ -122,24 +131,6 @@ class QLearningAgent:
 
     def LoadLearntModel(self, filepath):
         raise NotImplementedError
-
-    @staticmethod
-    def CreatePolicyFunction(qt, epsilon):
-        """
-        args:
-            QTable  qt          an LUT of action-values per state
-        return:
-                    func        function that generates action based on state
-        """
-        def EpsilonGreedyPolicy(s):
-            if random.uniform(0, 1) < epsilon:
-                a = np.random.choice(np.arange(qt.numActions))
-            else:
-                a = qt.GetArgMax(s)
-
-            return a
-
-        return EpsilonGreedyPolicy
 
     @staticmethod
     def PlotValues():

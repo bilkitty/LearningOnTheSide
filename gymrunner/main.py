@@ -11,6 +11,7 @@ from environments import EnvTypes, EnvWrapperFactory
 from visualise import PlotPerformanceResults, SaveFigure
 
 MAX_MEMORY_SIZE = 50000
+IS_ENV_DETERMINISTIC = False
 PARAM_FILE = os.path.join(GetRootProjectPath(), "gymrunner/params.json")
 
 ENVS = [EnvTypes.WindyGridEnv, EnvTypes.TaxiGridEnv, EnvTypes.CartPoleEnv,
@@ -43,9 +44,13 @@ def main():
         print(f"Invalid algo selected '{algoIndex}'")
         return 1
 
+    header = ""
+    if verbose:
+        header += "(verbose mode)\n"
+
     agent = None
     algoType = ALGOS[algoIndex]
-    env = EnvWrapperFactory(ENVS[envIndex])
+    env = EnvWrapperFactory(ENVS[envIndex], isDeterministic=IS_ENV_DETERMINISTIC)
     env.Reset()
 
     if algoType.lower() == "bruteforce":
@@ -55,8 +60,8 @@ def main():
 
     elif algoType.lower() == "qlearning":
         args = QLearningArgsParser().ParseArgs(PARAM_FILE)
-        print(f"Q-learning it\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}")
-        print(f"\n  epsilon={args.exploreRate}\n  gamma={args.discountRate}\n  alpha={args.learnRate}\n")
+        header += f"Q-learning\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}\n"
+        header += f"\n  epsilon={args.exploreRate}\n  gamma={args.discountRate}\n  alpha={args.learnRate}\n"
         agent = QLearningAgent(maxEpisodes=maxEpisodes,
                                maxEpochs=maxEpochs,
                                epsilon=args.exploreRate,
@@ -68,12 +73,13 @@ def main():
 
     elif algoType.lower() == "a2c":
         # TODO: pipe in a2c
-        print("nothing to see here...")
+        header += "nothing to see here...\n"
 
     elif algoType.lower() == "ddpg":
         args = DdpgArgsParser().ParseArgs(PARAM_FILE)
-        print(f"DDPG\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}")
-        print(f"  hiddenLayerSize={args.hiddenLayerWidth}\n  gamma={args.discountRate}\n  batchSize={args.batchSize}")
+        header += f"DDPG\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}\n"
+        header += f"  hiddenLayerSize={args.hiddenLayerWidth}\n  gamma={args.discountRate}\n  batchSize={args.batchSize}\n"
+        header += f"  softUpdate={args.softUpdateRate}\n  noiseShift={args.noiseShift}\n  noiseScale={args.noiseScale}\n"
         agent = DdpgAgent(maxEpisodes=maxEpisodes,
                           maxEpochs=maxEpochs,
                           gamma=args.discountRate,
@@ -84,14 +90,16 @@ def main():
                          maxMemorySize=MAX_MEMORY_SIZE,
                          hiddenSize=args.hiddenLayerWidth,
                          actorLearningRate=args.actorLearnRate,
-                         criticLearningRate=args.criticLearnRate)
+                         criticLearningRate=args.criticLearnRate,
+                         noiseShift=args.noiseShift,
+                         noiseScale=args.noiseScale)
 
     else:
         print(f"Unsupported algo type '{algoType}'")
         return 1
 
     if not shouldTestOnly:
-        resultsTrain, globalRuntime = Train(env, agent, verbose=verbose)
+        resultsTrain, globalRuntime = Train(env, agent, verbose=verbose, headerText=header)
         # TODO: save learnt model
         globalRewardAvg = np.mean([x.totalReward for x in resultsTrain])
         globalRewardStd = np.std([x.totalReward for x in resultsTrain])
@@ -101,7 +109,7 @@ def main():
         # TODO: load learnt model
         print("Loading model...")
 
-    resultsTest, globalRuntime = Test(env, agent, verbose=verbose)
+    resultsTest, globalRuntime = Test(env, agent, verbose=verbose, headerText=header)
     globalRewardAvg = np.mean([x.totalReward for x in resultsTest])
     globalRewardStd = np.std([x.totalReward for x in resultsTest])
     print(f"Finished testing: {globalRuntime: .4f}s,\tavgEpisodeR = {globalRewardAvg: .4f} +/-{globalRewardStd: .4f}")

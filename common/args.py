@@ -9,6 +9,8 @@ class DdpgArgs(BaseArgs):
     DEFAULT_UPDATE_RATE = 0.01
     DEFAULT_ACTOR_LR = 1e-4
     DEFAULT_CRITIC_LR = 1e-4
+    DEFAULT_NOISE_SHIFT = 0.3
+    DEFAULT_NOISE_SCALE = 0.15
 
     def __init__(self, argsFromJson, cmdlnArgs):
         BaseArgs.__init__(self, argsFromJson, cmdlnArgs)
@@ -19,6 +21,8 @@ class DdpgArgs(BaseArgs):
         self.hiddenLayerWidth = DdpgArgs.DEFAULT_HIDDEN_WIDTH
         self.actorLearnRate = DdpgArgs.DEFAULT_ACTOR_LR
         self.criticLearnRate = DdpgArgs.DEFAULT_CRITIC_LR
+        self.noiseShift = DdpgArgs.DEFAULT_NOISE_SHIFT
+        self.noiseScale = DdpgArgs.DEFAULT_NOISE_SCALE
 
         # Overwrite defaults with json params
         for k, v in argsFromJson.items():
@@ -27,6 +31,8 @@ class DdpgArgs(BaseArgs):
         # Commandline params take precedence
         self.softUpdateRate = self.softUpdateRate if cmdlnArgs.softUpdateRate is None else cmdlnArgs.softUpdateRate
         self.discountRate = self.discountRate if cmdlnArgs.discountRate is None else cmdlnArgs.discountRate
+        self.noiseShift = self.noiseShift if cmdlnArgs.noiseShift is None else cmdlnArgs.noiseShift
+        self.noiseScale = self.noiseScale if cmdlnArgs.noiseScale is None else cmdlnArgs.noiseScale
 
 
 class DdpgArgsParser(BaseArgsParser):
@@ -34,6 +40,8 @@ class DdpgArgsParser(BaseArgsParser):
         BaseArgsParser.__init__(self)
         self.cmdlnParser.add_argument("--softUpdateRate", metavar="target", type=float, help="For target networks")
         self.cmdlnParser.add_argument("--discountRate", metavar="discount", type=float, help="Reward discount rate")
+        self.cmdlnParser.add_argument("--noiseShift", metavar="sigmaNoise", type=float, help="Noise shift")
+        self.cmdlnParser.add_argument("--noiseScale", metavar="thetaNoise", type=float, help="Noise scale")
 
     def ParseArgs(self, jsonfilepath=None, argsList=None):
         jsonargs = {} if jsonfilepath is None else utils.LoadFromJsonFile(jsonfilepath)

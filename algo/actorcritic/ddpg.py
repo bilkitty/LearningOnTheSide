@@ -40,7 +40,7 @@ class DdpgAgent(ModelFreeAgent):
         self.experiences = None
         self.lossFunction = nn.MSELoss()
 
-    def Initialize(self, envWrapper, maxMemorySize, hiddenSize, actorLearningRate, criticLearningRate):
+    def Initialize(self, envWrapper, maxMemorySize, hiddenSize, actorLearningRate, criticLearningRate, noiseShift, noiseScale):
         """
         args:
             obj         envWrapper      wrapper containing gym env
@@ -59,7 +59,7 @@ class DdpgAgent(ModelFreeAgent):
         """
         self.SetupNetworks(envWrapper, hiddenSize)
         self.SetupOptimizers(actorLearningRate, criticLearningRate)
-        self.SetupNoiseProcess(envWrapper)
+        self.SetupNoiseProcess(envWrapper, 0, noiseShift, noiseScale)
         self.experiences = Memory(maxMemorySize)
 
     def Update(self):
@@ -125,8 +125,8 @@ class DdpgAgent(ModelFreeAgent):
         else:
             return False
 
-    def SetupNoiseProcess(self, envWrapper, mu=0):
-        self.noiseProcess = OUStrategy(envWrapper.env.action_space, mu)
+    def SetupNoiseProcess(self, envWrapper, mu=0, sigma=0.3, theta=0.15):
+        self.noiseProcess = OUStrategy(envWrapper.env.action_space, mu, min_sigma=sigma, theta=theta)
 
     def __UpdateWithReplay__(self):
         assert(self.experiences is not None)

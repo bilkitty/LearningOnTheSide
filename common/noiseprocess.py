@@ -89,10 +89,10 @@ class OUStrategy:
             decay_period=100000,
     ):
         self.mu = mu                                    # mean noise?
-        self.theta = theta                              # coeff of diff from mean
-        self.sigma = max_sigma                          # coeff of random term
+        self.theta = theta                              # scale deviation from mean state
+        self.sigma = max_sigma                          # scale amount of random shift from avg state
         self._max_sigma = max_sigma
-        self._min_sigma = min_sigma
+        self._min_sigma = min(min_sigma, max_sigma)
         self._decay_period = decay_period
         self.dim = np.prod(action_space.low.shape)
         self.low = action_space.low
