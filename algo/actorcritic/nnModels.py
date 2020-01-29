@@ -31,7 +31,10 @@ class Actor(nn.Module):
         #       the choice of output layer that will work for general envs. Is this possible in
         #       this implementation?
         action = torch.tanh(self.linear3(x))
-        # policyDistro = F.softmax(self.linear3(x), dim=1)
+
+        # TODO: using softmax here would yield some value in [0, 1] but what internally maps this
+        #       val to the continuous action space limits (i.e., action_space.hi, action_space.lo)
+        policyDistro = F.softmax(self.linear3(x), dim=1)
 
         return action
 

@@ -39,11 +39,14 @@ class NormalizedEnv(gym.ActionWrapper):
     """ Wrap action """
 
     def action(self, action):
+        # Remapping actions to more concentrated region in center of action space
+        # In other words, avoid extreme actions. Makes sense for pendulum balancing.
         act_k = (self.action_space.high - self.action_space.low)/ 2.
         act_b = (self.action_space.high + self.action_space.low)/ 2.
         return act_k * action + act_b
 
     def reverse_action(self, action):
+        # Reverse mapping from original action to constrained form.
         act_k_inv = 2./(self.action_space.high - self.action_space.low)
         act_b = (self.action_space.high + self.action_space.low)/ 2.
         return act_k_inv * (action - act_b)
@@ -106,10 +109,10 @@ class GymEnvWrapper:
  Pendulum
  https://github.com/openai/gym/blob/master/gym/envs/classic_control/pendulum.py
  
- Action Space
+ Action Space       -> ndarray 1x1
     Continuous torque value as control input (internally bounded)
     
- Observation Space
+ Observation Space  -> ndarray 1x3
     Continuous angle and angular velocity
     
  NOTE: strangely, step(action) takes an array whose values undergo thresholding.
