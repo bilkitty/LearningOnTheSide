@@ -88,7 +88,7 @@ class GymEnvWrapper:
             return self.env.observation_space.shape[0]
 
     def Render(self):
-        return self.env.render(self.renderingMode)
+        return self.env.render(mode=self.renderingMode)
 
     def Reset(self):
         return self.env.reset()
