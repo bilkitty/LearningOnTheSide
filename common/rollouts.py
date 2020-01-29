@@ -24,7 +24,7 @@ def Train(envWrapper, agent, verbose=True, headerText=""):
 
         # Console update for progress on # completed rollouts
         if (not verbose) and i % (agent.maxEpisodes / SCREEN_REFRESH_COUNT) == 0:
-            print(f"------------ E{i/agent.maxEpisodes: .2f}% -----------")
+            print(f"------------ {i/agent.maxEpisodes: .2f}% -----------")
 
         start = timer()
         while not done and epoch < agent.maxEpochs:
@@ -74,7 +74,7 @@ def Test(envWrapper, agent, verbose=True, headerText=""):
 
         # Console update for progress on # completed rollouts
         if (not verbose) and i % (agent.maxEpisodes / SCREEN_REFRESH_COUNT) == 0:
-            print(f"------------ E{i/agent.maxEpisodes: .2f}% -----------")
+            print(f"------------ {i/agent.maxEpisodes: .2f}% -----------")
 
         start = timer()
         while not done and epoch < agent.maxEpochs:
