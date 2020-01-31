@@ -57,10 +57,12 @@ class DdpgAgent(ModelFreeAgent):
             So, how can these internal components be made more generic? Map specific action/state spaces to a
             more general interface? What are possible ways to "normalize"?
         """
+        hiddenSize = np.array(hiddenSize)
         self.SetupNetworks(envWrapper, hiddenSize)
         self.SetupOptimizers(actorLearningRate, criticLearningRate)
         self.SetupNoiseProcess(envWrapper, 0, noiseShift, noiseScale)
         self.experiences = Memory(maxMemorySize)
+        return True
 
     def Update(self):
         return self.__UpdateWithReplay__()
@@ -97,7 +99,8 @@ class DdpgAgent(ModelFreeAgent):
 #
 
     def SetupNetworks(self, envWrapper, hiddenSize):
-        assert(0 <= hiddenSize)
+        for hs in hiddenSize:
+            assert(0 <= hs)
 
         numStates = envWrapper.ObservationSpaceN()
         numActions = envWrapper.ActionSpaceN()

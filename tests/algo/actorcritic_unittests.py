@@ -1,5 +1,5 @@
-import torch
 import unittest
+import numpy as np
 from environments import EnvTypes, EnvWrapperFactory
 from actorcritic.ddpg import *
 
@@ -7,9 +7,11 @@ from actorcritic.ddpg import *
 RENDERING_MODE = "ansi"
 I_TIMEOUT = 5
 MAX_MEMORY_SIZE = 10
-NN_HIDDEN_SIZE = 10
+NN_HIDDEN_SIZE = np.array([10, 10])
 ALR = 1e-4
 CLR = 1e-4
+NOISE_THETA = 0.15
+NOISE_SIGMA = 0.2
 BATCH_SIZE = 2
 
 # TODO: how would this work with discrete envs?
@@ -51,20 +53,20 @@ class TestDdpgComponents(unittest.TestCase):
 
     def test_TakeAction(self):
         for env in self.testEnvs:
-            self.ddpga.Initialize(env, MAX_MEMORY_SIZE, NN_HIDDEN_SIZE, ALR, CLR)
+            self.ddpga.Initialize(env, MAX_MEMORY_SIZE, NN_HIDDEN_SIZE, ALR, CLR, NOISE_SIGMA, NOISE_THETA)
             a = self.ddpga.GetAction(env.Reset())
             env.Step(a)
 
     def test_TakeActionNoNoise(self):
         for env in self.testEnvs:
-            self.ddpga.Initialize(env, MAX_MEMORY_SIZE, NN_HIDDEN_SIZE, ALR, CLR)
+            self.ddpga.Initialize(env, MAX_MEMORY_SIZE, NN_HIDDEN_SIZE, ALR, CLR, NOISE_SIGMA, NOISE_THETA)
             # Note that for ddpg, a noiseless action and best action are one in the same
             a = self.ddpga.GetBestAction(env.Reset())
             env.Step(a)
 
     def test_RunUpdate(self):
         for env in self.testEnvs:
-            self.ddpga.Initialize(env, MAX_MEMORY_SIZE, NN_HIDDEN_SIZE, ALR, CLR)
+            self.ddpga.Initialize(env, MAX_MEMORY_SIZE, NN_HIDDEN_SIZE, ALR, CLR, NOISE_SIGMA, NOISE_THETA)
 
             s = env.Reset()
             a = self.ddpga.GetAction(s)
@@ -76,12 +78,12 @@ class TestDdpgComponents(unittest.TestCase):
 
     def test_RunUpdateWithoutExperience(self):
         for env in self.testEnvs:
-            self.ddpga.Initialize(env, MAX_MEMORY_SIZE, NN_HIDDEN_SIZE, ALR, CLR)
+            self.ddpga.Initialize(env, MAX_MEMORY_SIZE, NN_HIDDEN_SIZE, ALR, CLR, NOISE_SIGMA, NOISE_THETA)
             self.assertFalse(self.ddpga.Update())
 
     def test_GetValue(self):
         for env in self.testEnvs:
-            self.ddpga.Initialize(env, MAX_MEMORY_SIZE, NN_HIDDEN_SIZE, ALR, CLR)
+            self.ddpga.Initialize(env, MAX_MEMORY_SIZE, NN_HIDDEN_SIZE, ALR, CLR, NOISE_SIGMA, NOISE_THETA)
             s = env.Reset()
             self.assertIsNotNone(self.ddpga.GetValue(s, self.ddpga.GetAction(s)))
 

@@ -77,18 +77,20 @@ class OUStrategy:
     Based on the rllab implementation.
     """
 
-    DEFAULT_SIGMA = 0.3
+    DEFAULT_SIGMA = 0.2
+    DEFAULT_THETA = 0.15
+    DEFAULT_MEAN = 0
 
     def __init__(
             self,
             action_space,
-            mu=0,
-            theta=0.15,
+            mu=DEFAULT_MEAN,
+            theta=DEFAULT_THETA,
             max_sigma=DEFAULT_SIGMA,
             min_sigma=DEFAULT_SIGMA,
             decay_period=100000,
     ):
-        self.mu = mu                                    # mean noise?
+        self.mu = mu                                    # mean noise
         self.theta = theta                              # scale deviation from mean state
         self.sigma = max_sigma                          # scale amount of random shift from avg state
         self._max_sigma = max_sigma

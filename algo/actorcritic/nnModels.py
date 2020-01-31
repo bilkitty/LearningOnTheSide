@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+IS_LOW_DIM = True
+FINAL_LAYER_INIT_RANGE_LOWD = 3e-2
+
 
 class Actor(nn.Module):
     # TODO: is this architecture specific to ddpg?
@@ -12,9 +15,16 @@ class Actor(nn.Module):
             output_size int             action space dims (for this application)
         """
         nn.Module.__init__(self)
-        self.linear1 = nn.Linear(input_size, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, output_size)
+        assert(len(hidden_size) == 2)
+        self.linear1 = nn.Linear(input_size, hidden_size[0])
+        self.linear2 = nn.Linear(hidden_size[0], hidden_size[1])
+        self.linear3 = nn.Linear(hidden_size[1], output_size)
+
+        # Recommended init (Lillicrap, 2015) for final layers
+        if IS_LOW_DIM:
+            self.linear3.weight.data.uniform_(-1 * FINAL_LAYER_INIT_RANGE_LOWD, FINAL_LAYER_INIT_RANGE_LOWD)
+        else:
+            self.linear3.weight.data.uniform_(-0.1 * FINAL_LAYER_INIT_RANGE_LOWD, 0.1 * FINAL_LAYER_INIT_RANGE_LOWD)
 
     def forward(self, state):
         """
@@ -28,13 +38,13 @@ class Actor(nn.Module):
         x = F.relu(self.linear2(x))
         # TODO: Why is this a good choice?
         #       Yoon's example env, Pendulum, has bounded continuous actions. We need to rethink
-        #       the choice of output layer that will work for general envs. Is this possible in
+        #       the choice of output layer that will work for general envs. Is this possible icree
         #       this implementation?
         action = torch.tanh(self.linear3(x))
 
         # TODO: using softmax here would yield some value in [0, 1] but what internally maps this
         #       val to the continuous action space limits (i.e., action_space.hi, action_space.lo)
-        policyDistro = F.softmax(self.linear3(x), dim=1)
+        #policyDistro = F.softmax(self.linear3(x), dim=1)
 
         return action
 
@@ -48,9 +58,16 @@ class Critic(nn.Module):
             output_size int             action space dims (for this application)
         """
         nn.Module.__init__(self)
-        self.linear1 = nn.Linear(input_size, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, output_size)
+        assert(len(hidden_size) == 2)
+        self.linear1 = nn.Linear(input_size, hidden_size[0])
+        self.linear2 = nn.Linear(hidden_size[0], hidden_size[1])
+        self.linear3 = nn.Linear(hidden_size[1], output_size)
+
+        # Recommended init (Lillicrap, 2015) for final layers
+        if IS_LOW_DIM:
+            self.linear3.weight.data.uniform_(-1 * FINAL_LAYER_INIT_RANGE_LOWD, FINAL_LAYER_INIT_RANGE_LOWD)
+        else:
+            self.linear3.weight.data.uniform_(-0.1 * FINAL_LAYER_INIT_RANGE_LOWD, 0.1 * FINAL_LAYER_INIT_RANGE_LOWD)
 
     def forward(self, state, action):
         """
@@ -61,7 +78,6 @@ class Critic(nn.Module):
                         float           action value for state-action pair
         """
 
-        # TODO: change dim based on whether single action/state were provided instead of multiple
         stateAction = torch.cat([state, action], dim=1)
         x = F.relu(self.linear1(stateAction))
         x = F.relu(self.linear2(x))

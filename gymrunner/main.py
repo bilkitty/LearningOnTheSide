@@ -72,8 +72,9 @@ def main():
 
     elif algoType.lower() == "ddpg":
         args = DdpgArgsParser().ParseArgs(PARAM_FILE)
+        hiddenLayerWidth = np.array([args.hiddenLayerWidth0, args.hiddenLayerWidth1])
         header += f"DDPG\nParameters:\n  env={ENVS[envIndex]}\n  episodes={maxEpisodes}\n  epochs={maxEpochs}\n"
-        header += f"  hiddenLayerSize={args.hiddenLayerWidth}\n  gamma={args.discountRate}\n  batchSize={args.batchSize}\n"
+        header += f"  hiddenLayerSize={hiddenLayerWidth}\n  gamma={args.discountRate}\n  batchSize={args.batchSize}\n"
         header += f"  softUpdate={args.softUpdateRate}\n  noiseShift={args.noiseShift}\n  noiseScale={args.noiseScale}\n"
         agent = DdpgAgent(maxEpisodes=maxEpisodes,
                           maxEpochs=maxEpochs,
@@ -83,7 +84,7 @@ def main():
 
         agent.Initialize(env,
                          maxMemorySize=MAX_MEMORY_SIZE,
-                         hiddenSize=args.hiddenLayerWidth,
+                         hiddenSize=hiddenLayerWidth,
                          actorLearningRate=args.actorLearnRate,
                          criticLearningRate=args.criticLearnRate,
                          noiseShift=args.noiseShift,

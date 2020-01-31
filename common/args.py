@@ -18,7 +18,8 @@ class DdpgArgs(BaseArgs):
         self.softUpdateRate = DdpgArgs.DEFAULT_TARGET_UPDATE_RATE
         self.discountRate = DdpgArgs.DEFAULT_REWARD_DISCOUNT_RATE
         self.batchSize = DdpgArgs.DEFAULT_BATCH_SIZE
-        self.hiddenLayerWidth = DdpgArgs.DEFAULT_HIDDEN_WIDTH
+        self.hiddenLayerWidth0 = DdpgArgs.DEFAULT_HIDDEN_WIDTH
+        self.hiddenLayerWidth1 = DdpgArgs.DEFAULT_HIDDEN_WIDTH
         self.actorLearnRate = DdpgArgs.DEFAULT_ACTOR_LR
         self.criticLearnRate = DdpgArgs.DEFAULT_CRITIC_LR
         self.noiseShift = DdpgArgs.DEFAULT_NOISE_SHIFT

@@ -35,7 +35,7 @@ def Train(envWrapper, agent, verbose=True, headerText=""):
 
             # Update agent model
             agent.SaveExperience(state=state, action=action, reward=reward, nextState=nextState, done=done)
-            agent.Update()
+            updated = agent.Update()
 
             # Updates related to env
             epoch += 1

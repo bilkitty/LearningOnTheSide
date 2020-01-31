@@ -1,0 +1,19 @@
+{
+  "desc": "h400g300b64d99s001",
+  "maxEpisodes": 50,
+  "maxEpochs": 500,
+  "algoIndex": 1,
+  "envIndex": 6,
+  "discountRate": 0.99,
+
+  "exploreRate": 0.1,
+  "learnRate": 0.1,
+
+  "hiddenLayerWidth0": 400,
+  "hiddenLayerWidth1": 300,
+  "batchSize": 64,
+  "softUpdateRate": 1e-3,
+  "noiseShift": 0.2,
+  "actorLearningRate": 1e-4,
+  "criticLearningRate": 1e-3
+}
