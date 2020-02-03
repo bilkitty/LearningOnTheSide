@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 IS_LOW_DIM = True
-FINAL_LAYER_INIT_RANGE_LOWD = 3e-2
+FINAL_LAYER_INIT_RANGE_LOWD = 3 * 1e-2
 
 
 class Actor(nn.Module):
@@ -23,8 +23,10 @@ class Actor(nn.Module):
         # Recommended init (Lillicrap, 2015) for final layers
         if IS_LOW_DIM:
             self.linear3.weight.data.uniform_(-1 * FINAL_LAYER_INIT_RANGE_LOWD, FINAL_LAYER_INIT_RANGE_LOWD)
+            self.linear3.bias.data.uniform_(-1 * FINAL_LAYER_INIT_RANGE_LOWD, FINAL_LAYER_INIT_RANGE_LOWD)
         else:
             self.linear3.weight.data.uniform_(-0.1 * FINAL_LAYER_INIT_RANGE_LOWD, 0.1 * FINAL_LAYER_INIT_RANGE_LOWD)
+            self.linear3.bias.data.uniform_(-0.1 * FINAL_LAYER_INIT_RANGE_LOWD, 0.1 * FINAL_LAYER_INIT_RANGE_LOWD)
 
     def forward(self, state):
         """
@@ -66,8 +68,10 @@ class Critic(nn.Module):
         # Recommended init (Lillicrap, 2015) for final layers
         if IS_LOW_DIM:
             self.linear3.weight.data.uniform_(-1 * FINAL_LAYER_INIT_RANGE_LOWD, FINAL_LAYER_INIT_RANGE_LOWD)
+            self.linear3.bias.data.uniform_(-1 * FINAL_LAYER_INIT_RANGE_LOWD, FINAL_LAYER_INIT_RANGE_LOWD)
         else:
             self.linear3.weight.data.uniform_(-0.1 * FINAL_LAYER_INIT_RANGE_LOWD, 0.1 * FINAL_LAYER_INIT_RANGE_LOWD)
+            self.linear3.bias.data.uniform_(-0.1 * FINAL_LAYER_INIT_RANGE_LOWD, 0.1 * FINAL_LAYER_INIT_RANGE_LOWD)
 
     def forward(self, state, action):
         """
