@@ -19,6 +19,9 @@ MAX_EPISODES = 3000
 """
 Summary of required packages: 
 python3 -m pip install torch
+
+References
+Yoon blog: https://towardsdatascience.com/understanding-actor-critic-methods-931b97b6df3f
 """
 
 def a2c(env):

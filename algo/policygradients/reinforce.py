@@ -75,7 +75,7 @@ def update_policy(policy_network, rewards, log_probs):
     # Normalize discounted rewards: center and confine to some range, in this case the mean
     # Q: why use std instead of max or some other finite measure? Rewards outside of std will
     #    have value 1+ or 1-
-    # The main purpose of doing this normalization is to avoid unstable/noisy gradients. The
+    # A: The main purpose of doing this normalization is to avoid unstable/noisy gradients. The
     # subtraction of the mean is the primary action that mitigates high variance in grads.
     discounted_rewards = torch.tensor(discounted_rewards)
     discounted_rewards = (discounted_rewards - discounted_rewards.mean()) / (
