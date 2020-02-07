@@ -64,7 +64,12 @@ def main():
                                alpha=args.learnRate,
                                batchSize=args.batchSize)
 
-        agent.Initialize(env, MAX_MEMORY_SIZE)
+        # TODO: choose binning based on env characteristics; either query binning from env, or implement it within.
+        #       can't just set a fixed number because each dim of state/action may have very different val ranges.
+        #       Perhaps at this level, we can specify coarse-to-fine ranges which will be implemented within env?
+        mActionBins = np.array([2] * env.ActionSpaceN())
+        nStateBins = np.array([100, 30, 100, 30])
+        agent.Initialize(env, MAX_MEMORY_SIZE, mActionBins, nStateBins)
 
     elif algoType.lower() == "a2c":
         # TODO: pipe in a2c

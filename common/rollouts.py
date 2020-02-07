@@ -7,7 +7,7 @@ from metrics import Metrics
 from time import sleep
 
 SCREEN_REFRESH_COUNT = 20
-SCREEN_REFRESH_COUNT_EPOCHS = 10000
+SCREEN_REFRESH_COUNT_EPOCHS = 50
 
 
 def Train(envWrapper, agent, verbose=True, headerText=""):
@@ -35,7 +35,7 @@ def Train(envWrapper, agent, verbose=True, headerText=""):
 
             # Update agent model
             agent.SaveExperience(state=state, action=action, reward=reward, nextState=nextState, done=done)
-            updated = agent.Update()
+            agent.Update()
 
             # Updates related to env
             epoch += 1

@@ -2,6 +2,7 @@ import gym
 import sys
 import os
 import random
+import math
 import numpy as np
 from time import sleep
 from gym.envs.toy_text import discrete
@@ -77,18 +78,51 @@ class GymEnvWrapper:
         self.env = gymEnv
         self.isDeterministic = isDeterministic
         self.renderingMode = renderingMode
+        self.actionBins = np.array([-1])
+        self.observationBins = np.array([-1])
+
+    def SetDiscretizationParams(self, mbins, nbins):
+        """
+        Prescribe the bin counts for each component of action (mbins=[...]) or state (nbins=[...]) representation.
+        If either action or state representation is Discrete then the inherent discrete rep is used.
+        """
+        if isinstance(self.env.action_space, type(gym.spaces.Discrete(0))):
+            self.actionBins = np.array([self.env.action_space.n])
+        else:
+            assert(len(mbins) == len(self.env.action_space.low))
+            self.actionBins = mbins
+
+        if isinstance(self.env.observation_space, type(gym.spaces.Discrete(0))):
+            self.observationBins = np.array([self.env.observation_space.n])
+        else:
+            assert(len(nbins) == len(self.env.observation_space.low))
+            self.observationBins = nbins
+
+        return self.actionBins, self.observationBins
 
     def ActionSpaceN(self):
-        if isinstance(self.env.action_space, type(gym.spaces.Discrete(1))):
+        # Not the results of this comparison is independent of int in Discrete(int) (at least it appears to be so)
+        if isinstance(self.env.action_space, type(gym.spaces.Discrete(0))):
             return self.env.action_space.n
         else:
             return self.env.action_space.shape[0]
 
     def ObservationSpaceN(self):
-        if isinstance(self.env.observation_space, type(gym.spaces.Discrete(1))):
+        # Not the results of this comparison is independent of int in Discrete(int)
+        if isinstance(self.env.observation_space, type(gym.spaces.Discrete(0))):
             return self.env.observation_space.n
         else:
             return self.env.observation_space.shape[0]
+
+    """
+    Optional functions for making environments compatible with methods that require discretized inputs.
+    It's super hacky, but doing this for experimentation sake; just curious.
+    """
+    def DiscretizeAction(self, a):
+        return a
+
+    def DiscretizeObservation(self, s):
+        return s
 
     def Render(self):
         return self.env.render(mode=self.renderingMode)
@@ -110,11 +144,13 @@ class GymEnvWrapper:
  Pendulum
  https://github.com/openai/gym/blob/master/gym/envs/classic_control/pendulum.py
  
- Action Space       -> ndarray 1x1
+ Action Space
+    Box(1)
     Continuous torque value as control input (internally bounded)
     
- Observation Space  -> ndarray 1x3
-    Continuous angle and angular velocity
+ Observation Space
+    Box(3)
+    Continuous cos angle, sine angle, and angular velocity
     
  NOTE: strangely, step(action) takes an array whose values undergo thresholding.
        Yoon's original agent.get_action(...) returns a scalar which causes error
@@ -240,6 +276,34 @@ class CartPoleEnvWrapper(GymEnvWrapper):
 
     def __init__(self, renderingMode, isDeterministic=False):
         GymEnvWrapper.__init__(self, gym.make("CartPole-v1").env, renderingMode, isDeterministic)
+
+    # NOTE: for now these two functions are inefficient. They will likely do a lot of redundant work because the
+    # calller will invoke them from rollout loops. I've been trying to think of a better implementation with this
+    # constraining wrapper. Perhaps ditch the wrapper? There doesn't seem to be a huge benefit atm.
+    def DiscretizeObservation(self, s):
+        if isinstance(self.env.observation_space, type(gym.spaces.Discrete(0))):
+            return s
+        else:
+            hi = self.env.observation_space.high
+            lo = self.env.observation_space.low
+            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            # HACK: the velocities in the are too large, so clip them to reasonable(?) values.
+            #       https://muetsch.io/cartpole-with-qlearning-first-experiences-with-openai-gym.html
+            #                             ______
+            # I DUN LIKE ZEEES (Y n Y)J < whyyy?!|
+            #                             ```````
+            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            hi[1] = 5
+            hi[3] = 2 * np.pi
+            lo[1] = -5
+            lo[3] = -2 * np.pi
+
+            mbins = self.observationBins
+            assert(-1 not in mbins)
+            assert(np.less_equal(lo, np.full(lo.shape, s)).all())
+            assert(np.less_equal(np.full(hi.shape, s), hi).all())
+            bs = (hi - lo) / mbins
+            return np.array((s - lo) / bs, dtype=int)
 
     def ActionSpaceLabels(self, shouldUseShorthand=False):
         if shouldUseShorthand:

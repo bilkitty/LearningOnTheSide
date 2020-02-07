@@ -21,27 +21,29 @@ Note that the qtable is a dictionary that provides default values states not fou
 
 
 class QTable:
-    def __init__(self, envWrapper):
-        self._table = defaultdict(lambda: np.zeros(envWrapper.ActionSpaceN()))
-        self.numActions = envWrapper.ActionSpaceN()
+    def __init__(self, envWrapper, M, N):
+        # NOTE: these functions only discretize as needed. Will not change spaces if they are already discrete.
+        self.numActions, self.numStates = envWrapper.SetDiscretizationParams(M, N)
+        self.callDiscretizeAction = envWrapper.DiscretizeAction
+        self.callDiscretizeState = envWrapper.DiscretizeObservation
+
+        self._table = defaultdict(lambda: np.zeros(self.numActions))
 
     def GetValue(self, state, action):
-        assert(isinstance(action, np.int32) or isinstance(action, np.int64))
-        if isinstance(state, np.ndarray): state = tuple(state)
+        state, action = self.Discretize(state, action)
         return self._table[state][action]
 
+    def SetValue(self, state, action, value):
+        state, action = self.Discretize(state, action)
+        self._table[state][action] = value
+
     def GetMaxValue(self, state):
-        if isinstance(state, np.ndarray): state = tuple(state)
+        state, _ = self.Discretize(state)
         return np.max(self._table[state])
 
     def GetArgMax(self, state):
-        if isinstance(state, np.ndarray): state = tuple(state)
+        state, _ = self.Discretize(state)
         return np.argmax(self._table[state])
-
-    def SetValue(self, state, action, value):
-        assert(isinstance(action, np.int32) or isinstance(action, np.int64))
-        if isinstance(state, np.ndarray): state = tuple(state)
-        self._table[state][action] = value
 
     def GetTable(self):
         return dict(self._table)
@@ -49,6 +51,24 @@ class QTable:
     def SetTable(self, table):
         assert(table is not None and isinstance(table, dict))
         self._table = table
+
+    def Discretize(self, state, action=None):
+        """
+        Call whenever interacting with table. This function generates a quantized form of state or action vectors
+        and returns the index of the quantization (per vector dimension) in the range of bins, mbins=[d0, d1, ..., dn].
+        Alternatively, this discretization could be pushed back to qlearning agent. That is, the state and action are
+        discretized once while being saved in experience buffer.
+        """
+        if action is not None:
+            q_action = self.callDiscretizeAction(action)
+            assert(isinstance(q_action, np.int32) or isinstance(q_action, np.int64))
+        else:
+            q_action = None
+
+        q_state = self.callDiscretizeState(state)
+        if isinstance(q_state, np.ndarray): q_state = tuple(q_state)
+        return q_state, q_action
+
 
 
 class QLearningAgent:
@@ -84,7 +104,7 @@ class QLearningAgent:
 
     # TODO: get rid of train and test; supplant with getaction(), update(),...
 
-    def Initialize(self, envWrapper, maxMemorySize, qTable=None):
+    def Initialize(self, envWrapper, maxMemorySize, M, N, qTable=None):
         """
         args:
             obj      envWrapper    wrapper containing gym env
@@ -93,7 +113,7 @@ class QLearningAgent:
             n/a
         """
         self.experiences = Memory(maxMemorySize)
-        self.qTable = QTable(envWrapper)
+        self.qTable = QTable(envWrapper, M, N)
         if qTable is not None:
             self.qTable.SetTable(qTable)
 
