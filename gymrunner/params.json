@@ -1,17 +1,10 @@
 {
-  "desc": "example config",
-  "maxEpisodes": 5,
-  "maxEpochs": 10000,
+  "desc": "d99e10l10_coarse_100_long",
+  "maxEpisodes": 100,
+  "maxEpochs": 100,
   "algoIndex": 0,
   "envIndex": 2,
-
-  "discountRate": 0.6,
+  "discountRate": 0.99,
   "exploreRate": 0.1,
-  "learnRate": 0.1,
-
-  "hiddenLayerWidth": 16,
-  "batchSize": 20,
-  "softUpdateRate": 0.01,
-  "actorLearningRate": 1e-4,
-  "criticLearningRate": 1e-3
+  "learnRate": 0.1
 }
