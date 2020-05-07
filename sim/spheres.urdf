@@ -33,7 +33,7 @@
     <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
     <parent link="s0"/>
     <child link="s1"/>
-    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <limit effort="50000" lower="-1.0467" upper="1.0467" velocity="10"/>
     <dynamics damping="0.7" friction="0.0"/>
   </joint>
   <link name="s1">
@@ -70,7 +70,7 @@
     <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
     <parent link="s1"/>
     <child link="s2"/>
-    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <limit effort="50000" lower="-1.0467" upper="1.0467" velocity="10"/>
     <dynamics damping="0.7" friction="0.0"/>
   </joint>
   <link name="s2">
@@ -107,7 +107,7 @@
     <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
     <parent link="s2"/>
     <child link="s3"/>
-    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <limit effort="50000" lower="-1.0467" upper="1.0467" velocity="10"/>
     <dynamics damping="0.7" friction="0.0"/>
   </joint>
   <link name="s3">
@@ -144,7 +144,7 @@
     <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
     <parent link="s3"/>
     <child link="s4"/>
-    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <limit effort="50000" lower="-1.0467" upper="1.0467" velocity="10"/>
     <dynamics damping="0.7" friction="0.0"/>
   </joint>
   <link name="s4">
@@ -181,7 +181,7 @@
     <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
     <parent link="s4"/>
     <child link="s5"/>
-    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <limit effort="50000" lower="-1.0467" upper="1.0467" velocity="10"/>
     <dynamics damping="0.7" friction="0.0"/>
   </joint>
   <link name="s5">
@@ -218,7 +218,7 @@
     <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
     <parent link="s5"/>
     <child link="s6"/>
-    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <limit effort="50000" lower="-1.0467" upper="1.0467" velocity="10"/>
     <dynamics damping="0.7" friction="0.0"/>
   </joint>
   <link name="s6">
@@ -255,7 +255,7 @@
     <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
     <parent link="s6"/>
     <child link="s7"/>
-    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <limit effort="50000" lower="-1.0467" upper="1.0467" velocity="10"/>
     <dynamics damping="0.7" friction="0.0"/>
   </joint>
   <link name="s7">
@@ -292,7 +292,7 @@
     <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
     <parent link="s7"/>
     <child link="s8"/>
-    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <limit effort="50000" lower="-1.0467" upper="1.0467" velocity="10"/>
     <dynamics damping="0.7" friction="0.0"/>
   </joint>
   <link name="s8">
@@ -329,7 +329,7 @@
     <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
     <parent link="s8"/>
     <child link="s9"/>
-    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <limit effort="50000" lower="-1.0467" upper="1.0467" velocity="10"/>
     <dynamics damping="0.7" friction="0.0"/>
   </joint>
   <link name="s9">
@@ -366,7 +366,7 @@
     <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
     <parent link="s9"/>
     <child link="s10"/>
-    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <limit effort="50000" lower="-1.0467" upper="1.0467" velocity="10"/>
     <dynamics damping="0.7" friction="0.0"/>
   </joint>
   <link name="s10">
@@ -403,7 +403,7 @@
     <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
     <parent link="s10"/>
     <child link="s11"/>
-    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <limit effort="50000" lower="-1.0467" upper="1.0467" velocity="10"/>
     <dynamics damping="0.7" friction="0.0"/>
   </joint>
   <link name="s11">
@@ -440,7 +440,7 @@
     <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
     <parent link="s11"/>
     <child link="s12"/>
-    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <limit effort="50000" lower="-1.0467" upper="1.0467" velocity="10"/>
     <dynamics damping="0.7" friction="0.0"/>
   </joint>
   <link name="s12">
@@ -477,7 +477,7 @@
     <origin rpy="0 0 0" xyz="0.0 -0.4 0.0"/>
     <parent link="s12"/>
     <child link="s13"/>
-    <limit effort="50000" lower="-1.3963" upper="1.3963" velocity="10"/>
+    <limit effort="50000" lower="-1.0467" upper="1.0467" velocity="10"/>
     <dynamics damping="0.7" friction="0.0"/>
   </joint>
   <link name="s13">
