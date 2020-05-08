@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 import pybullet as p
 import numpy as np
 import pybullet_data
@@ -7,6 +6,7 @@ import time
 import os
 import sys
 from io import StringIO
+import RopeModel
 
 
 class ModelFormats:
@@ -15,11 +15,8 @@ class ModelFormats:
 
 
 class RopeObj:
-    DEFAULT_MASS = 1
-    USE_MAXIMAL_COORDINATES = True
+    DEFAULT_MASS = 13
     OVERRIDE_DYNAMICS = True
-    MASS_IDX = 0
-    SPR_IDX = 1
     INVALID_UID = -1
 
     def __init__(self, geometryFile, fileType="obj", sphereRadius=0.2):
@@ -28,35 +25,44 @@ class RopeObj:
         #
 
         if fileType.lower() == "obj":
-            self.m_sphereUid, linkPositions = create_rope_geometry(geometryFile, sphereRadius)
+            self.m_sphere_uid, link_positions = create_rope_geometry(geometryFile, sphereRadius)
         else:
-            self.m_sphereUid, linkPositions = load_rope_geometry_from_urdf(geometryFile)
-        assert (linkPositions.shape[0] > 0), "Failed to create rope geometry"
+            self.m_sphere_uid, link_positions = load_rope_geometry_from_urdf(geometryFile)
+
+        assert (link_positions.shape[0] > 0), "Failed to create rope geometry"
+        self.m_length = link_positions.shape[0]
+        self.m_mass = RopeObj.DEFAULT_MASS
 
         # Override physical properties
         # Using large values is highly unstable
         if RopeObj.OVERRIDE_DYNAMICS:
-            for l in np.arange(linkPositions.shape[0]):
-                p.changeDynamics(self.m_sphereUid,
-                                 l,
-                                 RopeObj.DEFAULT_MASS,
+            for link in np.arange(self.m_length):
+                p.changeDynamics(self.m_sphere_uid,
+                                 link,
+                                 self.m_mass,
                                  restitution=0.009,  # (bounciness)
-                                 linearDamping=1,
+                                 linearDamping=0.5,
                                  angularDamping=0.1)
-                """
-                    change dynamics options
-                                 lateralFriction=2,                         // linear contact friction
-                                 spinningFriction=2,                        // torsional friction about normal
-                                 rollingFriction=2,                         // torsional friction about tangent
-                                 restitution=0.001,  # (bounciness)         // bounciness (^ less elastic)
-                                 linearDamping=0.1,                         // (0.04)                       
-                                 angularDamping=0.01,                       // (0.04) mvmt btw links (^ appears stiffer)
-                                 contactStiffness=1,                        // high value -> surface intersections
-                                 contactDamping=1,                          // should set together w/ stiffness
-                                 anisotropicFriction=[0.01, 0.01, 0.01]     // scales friction along different dirs
-                """
 
-        return
+        #
+        # Physical model
+        #
+        self.m_model = RopeModel.RopeModel(self.m_length, self.m_mass, link_positions)
+
+    """
+    NOTE:
+    change dynamics options
+        lateralFriction=2,                         // linear contact friction
+        spinningFriction=2,                        // torsional friction about normal
+        rollingFriction=2,                         // torsional friction about tangent
+        restitution=0.001,  # (bounciness)         // bounciness (^ less elastic)
+        linearDamping=0.1,                         // (0.04)                       
+        angularDamping=0.01,                       // (0.04) mvmt btw links (^ appears stiffer)
+        contactStiffness=1,                        // high value -> surface intersections
+        contactDamping=1,                          // should set together w/ stiffness
+        anisotropicFriction=[0.01, 0.01, 0.01]     // scales friction along different dirs
+    """
+
 
     """
     TODO: 
@@ -64,30 +70,48 @@ class RopeObj:
         then we compute joint position updates (inverse kin solver) and set them.
         
     """
-    def move(self, target_joint_id, target_pos, verbose):
-
+    def move(self, dt, verbose):
         if verbose:
             outfile = sys.stdout
         else:
             outfile = StringIO()
 
-        dof = 1 # TODO: function which returns dofs given a joint type
-        n_joints = p.getNumJoints(self.m_sphereUid)
-        joints_pos = np.zeros(n_joints, dtype=np.float128)
-        # Ensure that we are working with np.array
-        target_pos = np.array(target_pos, dtype=np.float128)
-
-        # Update moved link in physical model
-        joint_pos_per_dof = p.calculateInverseKinematics(self.m_sphereUid, target_joint_id, target_pos)
-        #joints_pos[target_joint_id] = joint_pos_per_dof[0]
-
+        # Set new joint positions
+        n_joints = self.m_length - 2
         for i in np.arange(n_joints):
-            p.setJointMotorControl2(self.m_sphereUid,
+            joints_pos = self.m_model.ComputeNewJointPosition(self.m_sphere_uid, i, i + 1, dt, outfile)
+            p.setJointMotorControl2(self.m_sphere_uid,
                                     i,
                                     p.POSITION_CONTROL,
                                     targetPosition=joints_pos[i],
                                     force=30)
 
+        # Update physical model
+        ls, _, _ = link_states(self.m_sphere_uid, n_joints, verbose)
+        self.m_model.update(ls, dt, verbose)
+
+
+"""
+Helper functions
+"""
+
+ENABLE_MODEL = True
+SLEEP_DURATION = 1. / 480.
+SPHERE_RADIUS = 0.2
+
+
+def make_rope(file):
+    return RopeObj(file, "obj", SPHERE_RADIUS) if "obj" in file else RopeObj(file, "urdf")
+
+
+def simulate(file, duration, verbose=False):
+    rope = make_rope(file)
+    for i in np.arange(duration):
+        p.stepSimulation()
+        if ENABLE_MODEL:
+            rope.move(SLEEP_DURATION, verbose)
+
+        time.sleep(SLEEP_DURATION)
 
 
 """
@@ -100,6 +124,7 @@ class RopeObj:
 """
 
 
+# TODO: refactor
 def link_states(uid, num_links, verbose=False):
     failedQueries = 0
     pos, orientations, inertialPos, inertialOrientations = [], [], [], []
@@ -126,9 +151,10 @@ def link_states(uid, num_links, verbose=False):
         print("================ ")
         print("Failed link state queries: {}".format(failedQueries))
 
-    return np.array(pos), np.array(orientations), np.array(inertialPos), np.array(inertialOrientations)
+    return np.column_stack((pos, orientations)), inertialPos, inertialOrientations
 
 
+# TODO: refactor
 def load_rope_geometry_from_urdf(modelUrdfFile, texturePath=""):
     print("Loading urdf '{}'".format(modelUrdfFile))
     if (not os.path.exists(modelUrdfFile)):
@@ -147,34 +173,15 @@ def load_rope_geometry_from_urdf(modelUrdfFile, texturePath=""):
     if (texturePath != ""):
         p.changeVisualShape(multiBodyId, -1, textureUniqueId=p.loadTexture(texturePath))
 
-    linkPositions = link_states(multiBodyId, p.getNumJoints(multiBodyId))[0]
-    if (not linkPositions.any()):
+    link_poses, _, _ = link_states(multiBodyId, p.getNumJoints(multiBodyId))
+    linkPositions = link_poses[:, 0:3]
+    if len(linkPositions) > 0:
+        print("(INFO) Found {} links and {} joints".format(len(linkPositions), p.getNumJoints(multiBodyId)))
+    else:
         print("Failed to get link states.")
         return RopeObj.INVALID_UID, np.array([])
 
     return multiBodyId, np.array(linkPositions)
-
-
-"""
-Helper functions
-"""
-
-ENABLE_MODEL = True
-SLEEP_DURATION = 1. / 480.
-SPHERE_RADIUS = 0.2
-
-
-def make_rope(file):
-    return RopeObj(file, "obj", SPHERE_RADIUS) if "obj" in file else RopeObj(file, "urdf")
-
-
-def simulate(file, duration):
-    rope = make_rope(file)
-    for i in np.arange(duration):
-        p.stepSimulation()
-        if ENABLE_MODEL:
-            rope.move(0, np.zeros(3), False)
-        time.sleep(SLEEP_DURATION)
 
 
 """
