@@ -33,7 +33,7 @@ p.setGravity(0, 0, -9.81)
 #
 ##
 
-urdf_file = "/home/bilkit/Workspace/ModelFreeLearning/sim/spheres.urdf"
+urdf_file = "/home/bilkit/Workspace/ModelFreeLearning/sim/little_spheres.urdf"
 obj_file = "/home/bilkit/Workspace/pybullet/models/random_urdfs/spheres/sphere.obj"
 SIM_DURATION = 10000
 
@@ -43,7 +43,6 @@ elif sys.argv[1] == '1':
     SnakeObj.simulate(SIM_DURATION)
 else:
     print("Usage:\n .py <0 or 1>")
-    sys.exit(1)
 
 p.disconnect()
 print("Disconnecting from gui")
