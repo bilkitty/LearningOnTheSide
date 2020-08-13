@@ -15,11 +15,24 @@ class ModelFormats:
 
 
 class RopeObj:
-    DEFAULT_MASS = 13
-    OVERRIDE_DYNAMICS = True
+    # Note that large masses result in "explosive" interactions with other objs - in other words,
+    # rope will falcon punch. However, changing masses will change the dynamics req to maintain
+    # similar rope-like behaviour.
+
+    class DynamicsProfile:
+        def __init__(self, obj_uid, n_links, mass, restitution, linear_damping, angular_damping):
+            pass
+
+        def generate_change_dynamics_options(self):
+            pass
+
+
+
+    DEFAULT_MASS = 5
+    MASS_0P01_SPHERE = 0.1
     INVALID_UID = -1
 
-    def __init__(self, geometryFile, fileType="obj", sphereRadius=0.2):
+    def __init__(self, geometryFile, fileType="obj", sphereRadius=0.3, xyz=[0, 0, 0], overrideDynamics=True):
         #
         # Geometric model
         #
@@ -27,21 +40,23 @@ class RopeObj:
         if fileType.lower() == "obj":
             self.m_sphere_uid, link_positions = create_rope_geometry(geometryFile, sphereRadius)
         else:
-            self.m_sphere_uid, link_positions = load_rope_geometry_from_urdf(geometryFile)
+            self.m_sphere_uid, link_positions = load_rope_geometry_from_urdf(geometryFile, xyz)
 
         assert (link_positions.shape[0] > 0), "Failed to create rope geometry"
         self.m_length = link_positions.shape[0]
-        self.m_mass = RopeObj.DEFAULT_MASS
+        self.m_mass = RopeObj.MASS_0P01_SPHERE
 
         # Override physical properties
         # Using large values is highly unstable
-        if RopeObj.OVERRIDE_DYNAMICS:
+        if overrideDynamics:
             for link in np.arange(self.m_length):
                 p.changeDynamics(self.m_sphere_uid,
                                  link,
                                  self.m_mass,
-                                 restitution=0.009,  # (bounciness)
-                                 linearDamping=0.5,
+                                 lateralFriction=1.0,
+                                 rollingFriction=1.0,
+                                 restitution=0.9,  # (bounciness)
+                                 linearDamping=0.05,
                                  angularDamping=0.1)
 
         #
@@ -96,15 +111,15 @@ Helper functions
 """
 
 ENABLE_MODEL = True
-SLEEP_DURATION = 1. / 480.
+SLEEP_DURATION = 1. / 4800.
 SPHERE_RADIUS = 0.2
 
 
-def make_rope(file):
-    return RopeObj(file, "obj", SPHERE_RADIUS) if "obj" in file else RopeObj(file, "urdf")
+def make_rope(file, xyz=[0, 0, 0]):
+    return RopeObj(file, "obj", SPHERE_RADIUS, xyz) if "obj" in file else RopeObj(file, "urdf")
 
 
-def simulate(file, duration, verbose=False):
+def simulate(file, duration=10000, verbose=False):
     rope = make_rope(file)
     for i in np.arange(duration):
         p.stepSimulation()
@@ -155,7 +170,7 @@ def link_states(uid, num_links, verbose=False):
 
 
 # TODO: refactor
-def load_rope_geometry_from_urdf(modelUrdfFile, texturePath=""):
+def load_rope_geometry_from_urdf(modelUrdfFile, xyz=[0, 0, 0], texturePath=""):
     print("Loading urdf '{}'".format(modelUrdfFile))
     if (not os.path.exists(modelUrdfFile)):
         print("Failed to find model paths '{}'".format(modelUrdfFile))
@@ -163,7 +178,7 @@ def load_rope_geometry_from_urdf(modelUrdfFile, texturePath=""):
 
     multiBodyId = ""
     if (modelUrdfFile.endswith(ModelFormats.Urdf)):
-        multiBodyId = p.loadURDF(modelUrdfFile)
+        multiBodyId = p.loadURDF(modelUrdfFile, *xyz)
         print("(INFO) Loaded new model '{}'".format(multiBodyId))
     else:
         print("Unknown model format '{}'".format(modelUrdfFile))

@@ -73,11 +73,12 @@ class SnakeObj:
                                              linkJointAxis=axis,
                                              useMaximalCoordinates=useMaximalCoordinates)
 
-        anistropicFriction = [1, 0.01, 0.01]
-        p.changeDynamics(self.m_sphereUid, -1, lateralFriction=2, anisotropicFriction=anistropicFriction)
+        anisotropic_friction = 0.01
+        lat_friction = 2
+        p.changeDynamics(self.m_sphereUid, -1, lateralFriction=lat_friction, anisotropicFriction=anisotropic_friction)
         for i in np.arange(p.getNumJoints(self.m_sphereUid)):
             p.getJointInfo(self.m_sphereUid, i)
-            p.changeDynamics(self.m_sphereUid, i, lateralFriction=2, anisotropicFriction=anistropicFriction)
+            p.changeDynamics(self.m_sphereUid, i, lateralFriction=lat_friction, anisotropicFriction=anisotropic_friction)
 
     def SetObjectParameters(self, length, period, amplitude, wavefront):
         self.m_waveLength = length

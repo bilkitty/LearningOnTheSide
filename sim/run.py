@@ -17,15 +17,46 @@ import SnakeObj
 import RopeObj
 
 
+urdf_file = "/home/bilkit/Workspace/ModelFreeLearning/sim/little_spheres.urdf"
+pr2_urdf_file = "/home/bilkit/Workspace/RobotModels/pr2_common/pr2_description/robots/pr2.urdf"
+obj_file = "/home/bilkit/Workspace/pybullet/models/random_urdfs/spheres/sphere.obj"
+SIM_DURATION = 10000
+SIM_SELECTION = 0
+
+#
+# Parse commandline args
+#
 if len(sys.argv) != 2:
-    print("Please provide model obj/urdf file")
+    print("Usage:\n .py <0 or 1>")
+    sys.exit()
+elif sys.argv[1] == '0':
+    SIM_SELECTION = 0
+elif sys.argv[1] == '1':
+    SIM_SELECTION = 1
+else:
+    print(f"(!) Unknown arg {sys.argv[1]} \nUsage:\n .py <0 or 1>")
     sys.exit()
 
+#
+# Setup physics server
+#
 print("Connecting to gui")
 physicsClient = p.connect(p.GUI)  # or p.DIRECT for non-graphical version
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
 planeId = p.loadURDF('plane.urdf')
 p.setGravity(0, 0, -9.81)
+
+pr2 = p.loadURDF(pr2_urdf_file)
+
+#
+# Run
+#
+if SIM_SELECTION == 0:
+    RopeObj.simulate(urdf_file, SIM_DURATION)
+elif SIM_SELECTION == 1:
+    SnakeObj.simulate(SIM_DURATION)
+else:
+    assert f"(!) Bad simulation selection {SIM_SELECTION}"
 
 ##
 #
@@ -33,16 +64,6 @@ p.setGravity(0, 0, -9.81)
 #
 ##
 
-urdf_file = "/home/bilkit/Workspace/ModelFreeLearning/sim/little_spheres.urdf"
-obj_file = "/home/bilkit/Workspace/pybullet/models/random_urdfs/spheres/sphere.obj"
-SIM_DURATION = 10000
-
-if sys.argv[1] == '0':
-    RopeObj.simulate(urdf_file, SIM_DURATION)
-elif sys.argv[1] == '1':
-    SnakeObj.simulate(SIM_DURATION)
-else:
-    print("Usage:\n .py <0 or 1>")
 
 p.disconnect()
 print("Disconnecting from gui")
