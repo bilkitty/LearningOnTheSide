@@ -28,8 +28,8 @@ class RopeObj:
 
 
 
-    DEFAULT_MASS = 5
-    MASS_0P01_SPHERE = 0.1
+    DEFAULT_MASS = 0.5
+    MASS_0P01_SPHERE = 1
     INVALID_UID = -1
 
     def __init__(self, geometryFile, fileType="obj", sphereRadius=0.3, xyz=[0, 0, 0], overrideDynamics=True):
@@ -56,8 +56,7 @@ class RopeObj:
                                  lateralFriction=1.0,
                                  rollingFriction=1.0,
                                  restitution=0.9,  # (bounciness)
-                                 linearDamping=0.05,
-                                 angularDamping=0.1)
+                                 )
 
         #
         # Physical model
@@ -116,7 +115,7 @@ SPHERE_RADIUS = 0.2
 
 
 def make_rope(file, xyz=[0, 0, 0]):
-    return RopeObj(file, "obj", SPHERE_RADIUS, xyz) if "obj" in file else RopeObj(file, "urdf")
+    return RopeObj(file, "obj", SPHERE_RADIUS, xyz=xyz) if "obj" in file else RopeObj(file, "urdf", xyz=xyz)
 
 
 def simulate(file, duration=10000, verbose=False):
