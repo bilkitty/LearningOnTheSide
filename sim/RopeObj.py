@@ -101,8 +101,20 @@ class RopeObj:
                                     force=30)
 
         # Update physical model
-        ls, _, _ = link_states(self.m_sphere_uid, n_joints, verbose)
+        ls, _ = link_states(self.m_sphere_uid, n_joints, verbose)
         self.m_model.update(ls, dt, verbose)
+
+    def setDynamics(self, dynamics_profile):
+        """
+        Parameters
+        ----------
+        dynamics_profile - class that defines dynamics properties for rope objects
+
+        Returns
+        -------
+        n/a
+        """
+        pass
 
 
 """
@@ -165,7 +177,7 @@ def link_states(uid, num_links, verbose=False):
         print("================ ")
         print("Failed link state queries: {}".format(failedQueries))
 
-    return np.column_stack((pos, orientations)), inertialPos, inertialOrientations
+    return np.column_stack((pos, orientations)), np.column_stack((inertialPos, inertialOrientations))
 
 
 # TODO: refactor
@@ -187,15 +199,15 @@ def load_rope_geometry_from_urdf(modelUrdfFile, xyz=[0, 0, 0], texturePath=""):
     if (texturePath != ""):
         p.changeVisualShape(multiBodyId, -1, textureUniqueId=p.loadTexture(texturePath))
 
-    link_poses, _, _ = link_states(multiBodyId, p.getNumJoints(multiBodyId))
-    linkPositions = link_poses[:, 0:3]
-    if len(linkPositions) > 0:
-        print("(INFO) Found {} links and {} joints".format(len(linkPositions), p.getNumJoints(multiBodyId)))
+    link_poses, _ = link_states(multiBodyId, p.getNumJoints(multiBodyId))
+    link_positions = link_poses[:, 0:3]
+    if len(link_positions) > 0:
+        print("(INFO) Found {} links and {} joints".format(len(link_positions), p.getNumJoints(multiBodyId)))
     else:
         print("Failed to get link states.")
         return RopeObj.INVALID_UID, np.array([])
 
-    return multiBodyId, np.array(linkPositions)
+    return multiBodyId, np.array(link_positions)
 
 
 """
